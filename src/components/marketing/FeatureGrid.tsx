@@ -13,7 +13,7 @@ const features = [
         icon: Wand2,
         title: "Magic Clips",
         description:
-            "AI automatically identifies the most engaging moments and creates vertical clips ready for social media.",
+            "Automatically identifies the most engaging moments and creates vertical clips ready for social media.",
         color: "var(--color-primary)",
         span: "col-span-2",
     },
@@ -69,7 +69,7 @@ export function FeatureGrid() {
                         One Sermon. Endless Content.
                     </h2>
                     <p className="text-lg text-[var(--color-text-muted)] max-w-2xl mx-auto">
-                        Upload once, and let AI create clips, guides, graphics, and more—all
+                        Upload once, and autogenerate clips, guides, graphics, and more—all
                         with your church&apos;s branding.
                     </p>
                 </div>
