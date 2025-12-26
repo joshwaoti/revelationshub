@@ -1,3 +1,6 @@
+"use client";
+
+import { motion } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -41,11 +44,48 @@ const insights = [
     { label: "Viral Potential", value: "High" },
 ];
 
+// Animation variants
+const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+        opacity: 1,
+        transition: {
+            staggerChildren: 0.1,
+        },
+    },
+};
+
+const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: {
+        opacity: 1,
+        y: 0,
+        transition: { duration: 0.4 },
+    },
+};
+
+const headerVariants = {
+    hidden: { opacity: 0, y: -20 },
+    visible: {
+        opacity: 1,
+        y: 0,
+        transition: { duration: 0.5 },
+    },
+};
+
 export default function SermonDashboardPage() {
     return (
-        <div className="space-y-6">
+        <motion.div
+            className="space-y-6"
+            variants={containerVariants}
+            initial="hidden"
+            animate="visible"
+        >
             {/* Header */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <motion.div
+                className="flex flex-col md:flex-row md:items-center justify-between gap-4"
+                variants={headerVariants}
+            >
                 <div>
                     <div className="flex items-center gap-3 mb-2">
                         <h1 className="font-display text-2xl md:text-3xl font-bold text-[var(--color-text-light)]">
@@ -73,156 +113,209 @@ export default function SermonDashboardPage() {
                     </div>
                 </div>
                 <div className="flex items-center gap-3">
-                    <Button variant="outline">
-                        <Play className="h-4 w-4 mr-2" />
-                        Watch Full Sermon
-                    </Button>
-                    <Button variant="secondary">
-                        <Sparkles className="h-4 w-4 mr-2" />
-                        Generate Content
-                    </Button>
+                    <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                        <Button variant="outline">
+                            <Play className="h-4 w-4 mr-2" />
+                            Watch Full Sermon
+                        </Button>
+                    </motion.div>
+                    <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                        <Button variant="secondary">
+                            <Sparkles className="h-4 w-4 mr-2" />
+                            Generate Content
+                        </Button>
+                    </motion.div>
                 </div>
-            </div>
+            </motion.div>
 
             {/* Bento Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Video Player - Large */}
-                <Card className="lg:col-span-2 lg:row-span-2 overflow-hidden">
-                    <div className="relative aspect-video bg-[var(--color-base)]">
-                        <div className="absolute inset-0 bg-gradient-to-br from-[var(--color-primary)]/20 to-[var(--color-secondary)]/20" />
-                        <div className="absolute inset-0 flex items-center justify-center">
-                            <button className="h-16 w-16 rounded-full bg-[var(--color-primary)] flex items-center justify-center hover:scale-105 transition-transform">
-                                <Play className="h-7 w-7 text-[var(--color-base)] ml-1" />
-                            </button>
-                        </div>
-                        <div className="absolute bottom-4 left-4 right-4">
-                            <div className="h-1 bg-white/20 rounded-full">
-                                <div className="h-full w-1/3 bg-[var(--color-primary)] rounded-full" />
+                <motion.div
+                    className="lg:col-span-2 lg:row-span-2"
+                    variants={itemVariants}
+                >
+                    <Card className="overflow-hidden h-full">
+                        <div className="relative aspect-video bg-[var(--color-base)]">
+                            <div className="absolute inset-0 bg-gradient-to-br from-[var(--color-primary)]/20 to-[var(--color-secondary)]/20" />
+                            <div className="absolute inset-0 flex items-center justify-center">
+                                <motion.button
+                                    className="h-16 w-16 rounded-full bg-[var(--color-primary)] flex items-center justify-center"
+                                    whileHover={{ scale: 1.1 }}
+                                    whileTap={{ scale: 0.95 }}
+                                    transition={{ type: "spring", stiffness: 400, damping: 17 }}
+                                >
+                                    <Play className="h-7 w-7 text-[var(--color-base)] ml-1" />
+                                </motion.button>
                             </div>
-                            <div className="flex justify-between mt-2 text-xs text-white/80 font-mono">
-                                <span>14:23</span>
-                                <span>{sermon.duration}</span>
+                            <div className="absolute bottom-4 left-4 right-4">
+                                <div className="h-1 bg-white/20 rounded-full overflow-hidden">
+                                    <motion.div
+                                        className="h-full bg-[var(--color-primary)] rounded-full"
+                                        initial={{ width: 0 }}
+                                        animate={{ width: "33%" }}
+                                        transition={{ duration: 1, delay: 0.5 }}
+                                    />
+                                </div>
+                                <div className="flex justify-between mt-2 text-xs text-white/80 font-mono">
+                                    <span>14:23</span>
+                                    <span>{sermon.duration}</span>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                </Card>
+                    </Card>
+                </motion.div>
 
                 {/* AI Insights */}
-                <Card>
-                    <CardHeader className="pb-3">
-                        <CardTitle className="text-lg flex items-center gap-2">
-                            <Sparkles className="h-4 w-4 text-[var(--color-secondary)]" />
-                            AI Insights
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="space-y-3">
-                            {insights.map((insight) => (
-                                <div
-                                    key={insight.label}
-                                    className="flex items-center justify-between"
+                <motion.div variants={itemVariants}>
+                    <Card className="h-full">
+                        <CardHeader className="pb-3">
+                            <CardTitle className="text-lg flex items-center gap-2">
+                                <motion.div
+                                    animate={{ rotate: [0, 10, -10, 0] }}
+                                    transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
                                 >
-                                    <span className="text-sm text-[var(--color-text-muted)]">
-                                        {insight.label}
-                                    </span>
-                                    <span className="text-sm font-medium text-[var(--color-text-light)]">
-                                        {insight.value}
-                                    </span>
-                                </div>
-                            ))}
-                        </div>
-                    </CardContent>
-                </Card>
+                                    <Sparkles className="h-4 w-4 text-[var(--color-secondary)]" />
+                                </motion.div>
+                                AI Insights
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="space-y-3">
+                                {insights.map((insight, index) => (
+                                    <motion.div
+                                        key={insight.label}
+                                        className="flex items-center justify-between p-2 rounded-lg hover:bg-[var(--color-surface)] transition-colors"
+                                        initial={{ opacity: 0, x: -10 }}
+                                        animate={{ opacity: 1, x: 0 }}
+                                        transition={{ delay: 0.5 + index * 0.1 }}
+                                    >
+                                        <span className="text-sm text-[var(--color-text-muted)]">
+                                            {insight.label}
+                                        </span>
+                                        <span className="text-sm font-medium text-[var(--color-text-light)]">
+                                            {insight.value}
+                                        </span>
+                                    </motion.div>
+                                ))}
+                            </div>
+                        </CardContent>
+                    </Card>
+                </motion.div>
 
                 {/* Description */}
-                <Card>
-                    <CardHeader className="pb-3">
-                        <CardTitle className="text-lg">Description</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <p className="text-sm text-[var(--color-text-muted)] leading-relaxed">
-                            {sermon.description}
-                        </p>
-                    </CardContent>
-                </Card>
+                <motion.div variants={itemVariants}>
+                    <Card className="h-full">
+                        <CardHeader className="pb-3">
+                            <CardTitle className="text-lg">Description</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <p className="text-sm text-[var(--color-text-muted)] leading-relaxed">
+                                {sermon.description}
+                            </p>
+                        </CardContent>
+                    </Card>
+                </motion.div>
 
                 {/* Top Clips */}
-                <Card className="lg:col-span-2">
-                    <CardHeader className="pb-3">
-                        <div className="flex items-center justify-between">
-                            <CardTitle className="text-lg flex items-center gap-2">
-                                <Wand2 className="h-4 w-4 text-[var(--color-primary)]" />
-                                Top Clips
-                            </CardTitle>
-                            <Link
-                                href={`/sermon/${sermon.id}/clips`}
-                                className="text-sm text-[var(--color-primary)] hover:underline"
-                            >
-                                View all
-                            </Link>
-                        </div>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                            {clips.map((clip) => (
-                                <div
-                                    key={clip.id}
-                                    className="group cursor-pointer"
+                <motion.div
+                    className="lg:col-span-2"
+                    variants={itemVariants}
+                >
+                    <Card>
+                        <CardHeader className="pb-3">
+                            <div className="flex items-center justify-between">
+                                <CardTitle className="text-lg flex items-center gap-2">
+                                    <Wand2 className="h-4 w-4 text-[var(--color-primary)]" />
+                                    Top Clips
+                                </CardTitle>
+                                <Link
+                                    href={`/sermon/${sermon.id}/clips`}
+                                    className="text-sm text-[var(--color-primary)] hover:underline"
                                 >
-                                    <div className="relative aspect-[9/16] bg-[var(--color-base)] rounded-[var(--radius-default)] overflow-hidden mb-2">
-                                        <div className="absolute inset-0 bg-gradient-to-br from-[var(--color-primary)]/30 to-[var(--color-secondary)]/30" />
-                                        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <div className="h-10 w-10 rounded-full bg-[var(--color-primary)] flex items-center justify-center">
-                                                <Play className="h-4 w-4 text-[var(--color-base)] ml-0.5" />
+                                    View all
+                                </Link>
+                            </div>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                {clips.map((clip, index) => (
+                                    <motion.div
+                                        key={clip.id}
+                                        className="group cursor-pointer"
+                                        initial={{ opacity: 0, scale: 0.9 }}
+                                        animate={{ opacity: 1, scale: 1 }}
+                                        transition={{ delay: 0.6 + index * 0.1 }}
+                                        whileHover={{ y: -4 }}
+                                    >
+                                        <div className="relative aspect-[9/16] bg-[var(--color-base)] rounded-[var(--radius-default)] overflow-hidden mb-2 group-hover:ring-2 ring-[var(--color-primary)]/30 transition-all">
+                                            <div className="absolute inset-0 bg-gradient-to-br from-[var(--color-primary)]/30 to-[var(--color-secondary)]/30" />
+                                            <motion.div
+                                                className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                            >
+                                                <motion.div
+                                                    className="h-10 w-10 rounded-full bg-[var(--color-primary)] flex items-center justify-center"
+                                                    whileHover={{ scale: 1.1 }}
+                                                >
+                                                    <Play className="h-4 w-4 text-[var(--color-base)] ml-0.5" />
+                                                </motion.div>
+                                            </motion.div>
+                                            <div className="absolute top-2 right-2">
+                                                <Badge variant="ai" className="text-[10px] px-1.5 py-0.5">
+                                                    {clip.score}%
+                                                </Badge>
+                                            </div>
+                                            <div className="absolute bottom-2 right-2 bg-black/60 px-1.5 py-0.5 rounded text-[10px] text-white font-mono">
+                                                {clip.duration}
                                             </div>
                                         </div>
-                                        <div className="absolute top-2 right-2">
-                                            <Badge variant="ai" className="text-[10px] px-1.5 py-0.5">
-                                                {clip.score}%
-                                            </Badge>
-                                        </div>
-                                        <div className="absolute bottom-2 right-2 bg-black/60 px-1.5 py-0.5 rounded text-[10px] text-white font-mono">
-                                            {clip.duration}
-                                        </div>
-                                    </div>
-                                    <p className="text-xs text-[var(--color-text-light)] line-clamp-2">
-                                        {clip.title}
-                                    </p>
-                                </div>
-                            ))}
-                        </div>
-                    </CardContent>
-                </Card>
+                                        <p className="text-xs text-[var(--color-text-light)] line-clamp-2 group-hover:text-[var(--color-primary)] transition-colors">
+                                            {clip.title}
+                                        </p>
+                                    </motion.div>
+                                ))}
+                            </div>
+                        </CardContent>
+                    </Card>
+                </motion.div>
 
                 {/* Quick Actions */}
-                <Card>
-                    <CardHeader className="pb-3">
-                        <CardTitle className="text-lg">Quick Actions</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="space-y-2">
-                            <Link href={`/sermon/${sermon.id}/clips`}>
-                                <Button variant="ghost" className="w-full justify-start">
-                                    <Wand2 className="h-4 w-4 mr-2 text-[var(--color-primary)]" />
-                                    Generate More Clips
-                                </Button>
-                            </Link>
-                            <Link href={`/sermon/${sermon.id}/discussion-guide`}>
-                                <Button variant="ghost" className="w-full justify-start">
-                                    <BookOpen className="h-4 w-4 mr-2 text-[var(--color-secondary)]" />
-                                    Create Discussion Guide
-                                </Button>
-                            </Link>
-                            <Link href={`/sermon/${sermon.id}/transcription`}>
-                                <Button variant="ghost" className="w-full justify-start">
-                                    <Calendar className="h-4 w-4 mr-2 text-[var(--color-success)]" />
-                                    View Transcription
-                                </Button>
-                            </Link>
-                        </div>
-                    </CardContent>
-                </Card>
+                <motion.div variants={itemVariants}>
+                    <Card>
+                        <CardHeader className="pb-3">
+                            <CardTitle className="text-lg">Quick Actions</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="space-y-2">
+                                <Link href={`/sermon/${sermon.id}/clips`}>
+                                    <motion.div whileHover={{ x: 4 }} whileTap={{ scale: 0.98 }}>
+                                        <Button variant="ghost" className="w-full justify-start">
+                                            <Wand2 className="h-4 w-4 mr-2 text-[var(--color-primary)]" />
+                                            Generate More Clips
+                                        </Button>
+                                    </motion.div>
+                                </Link>
+                                <Link href={`/sermon/${sermon.id}/discussion-guide`}>
+                                    <motion.div whileHover={{ x: 4 }} whileTap={{ scale: 0.98 }}>
+                                        <Button variant="ghost" className="w-full justify-start">
+                                            <BookOpen className="h-4 w-4 mr-2 text-[var(--color-secondary)]" />
+                                            Create Discussion Guide
+                                        </Button>
+                                    </motion.div>
+                                </Link>
+                                <Link href={`/sermon/${sermon.id}/transcription`}>
+                                    <motion.div whileHover={{ x: 4 }} whileTap={{ scale: 0.98 }}>
+                                        <Button variant="ghost" className="w-full justify-start">
+                                            <Calendar className="h-4 w-4 mr-2 text-[var(--color-success)]" />
+                                            View Transcription
+                                        </Button>
+                                    </motion.div>
+                                </Link>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </motion.div>
             </div>
-        </div>
+        </motion.div>
     );
 }
