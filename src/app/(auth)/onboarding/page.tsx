@@ -1,10 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import { useOrganization, useUser } from "@clerk/nextjs";
+import { useMutation, useQuery } from "convex/react";
+import { api } from "../../../../convex/_generated/api";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Check, Upload, Palette, Type } from "lucide-react";
+import { ColorPicker } from "@/components/ui/color-picker";
+import { Check, Upload, Palette, Type, Loader2 } from "lucide-react";
 import Link from "next/link";
 
 const steps = [
@@ -14,7 +19,136 @@ const steps = [
 ];
 
 export default function OnboardingPage() {
+    const router = useRouter();
+    const { organization, isLoaded: orgLoaded } = useOrganization();
+    const { user } = useUser();
+
     const [currentStep, setCurrentStep] = useState(1);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    // Step 1 data
+    const [churchName, setChurchName] = useState("");
+    const [denomination, setDenomination] = useState("");
+    const [churchSize, setChurchSize] = useState("");
+
+    // Step 2 data (Brand Kit)
+    const [primaryColor, setPrimaryColor] = useState("#0066CC");
+    const [secondaryColor, setSecondaryColor] = useState("#FF6600");
+    const [fontFamily, setFontFamily] = useState("Roboto");
+    const [logoLightUrl, setLogoLightUrl] = useState("");
+    const [logoDarkUrl, setLogoDarkUrl] = useState("");
+
+    // Convex mutations
+    const upsertOrg = useMutation(api.organizations.upsert);
+    const upsertBrandKit = useMutation(api.brandKits.upsert);
+    const upsertMember = useMutation(api.members.upsert);
+    const upsertSubscription = useMutation(api.subscriptions.upsert);
+
+    // Get organization from Convex
+    const convexOrg = useQuery(
+        api.organizations.getByClerkId,
+        organization?.id ? { clerkOrgId: organization.id } : "skip"
+    );
+
+    // Sync organization to Convex and continue
+    const handleStep1Continue = async () => {
+        if (!organization?.id || !user?.id) return;
+
+        setIsSubmitting(true);
+        try {
+            // Create/update organization in Convex
+            const orgId = await upsertOrg({
+                clerkOrgId: organization.id,
+                name: organization.name || churchName,
+                slug: organization.slug || undefined,
+                imageUrl: organization.imageUrl || undefined,
+            });
+
+            // Create member record
+            await upsertMember({
+                clerkUserId: user.id,
+                organizationId: orgId,
+                role: "admin",
+                email: user.emailAddresses[0]?.emailAddress || "",
+                name: user.fullName || undefined,
+                imageUrl: user.imageUrl || undefined,
+            });
+
+            // Create free subscription
+            await upsertSubscription({
+                organizationId: orgId,
+                paystackCustomerId: "",
+                plan: "free",
+                status: "active",
+                clipCredits: 2,
+            });
+
+            setCurrentStep(2);
+        } catch (error) {
+            console.error("Error saving organization:", error);
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    // Save brand kit and continue
+    const handleStep2Continue = async () => {
+        if (!convexOrg?._id) {
+            // If org not synced yet, go back
+            setCurrentStep(1);
+            return;
+        }
+
+        setIsSubmitting(true);
+        try {
+            await upsertBrandKit({
+                organizationId: convexOrg._id,
+                name: "Default",
+                logoLightUrl: logoLightUrl || undefined,
+                logoDarkUrl: logoDarkUrl || undefined,
+                primaryColor,
+                secondaryColor,
+                fontFamily,
+            });
+
+            setCurrentStep(3);
+        } catch (error) {
+            console.error("Error saving brand kit:", error);
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    // Handle logo upload
+    const handleLogoUpload = useCallback((type: "light" | "dark") => {
+        const input = document.createElement("input");
+        input.type = "file";
+        input.accept = "image/*";
+        input.onchange = async (e) => {
+            const file = (e.target as HTMLInputElement).files?.[0];
+            if (!file) return;
+
+            // For now, create a data URL (in production, upload to Convex storage)
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const dataUrl = e.target?.result as string;
+                if (type === "light") {
+                    setLogoLightUrl(dataUrl);
+                } else {
+                    setLogoDarkUrl(dataUrl);
+                }
+            };
+            reader.readAsDataURL(file);
+        };
+        input.click();
+    }, []);
+
+    // Pre-populate church name from Clerk org
+    useState(() => {
+        if (organization?.name) {
+            setChurchName(organization.name);
+        }
+    });
 
     return (
         <main className="min-h-screen bg-[var(--color-base)] flex items-center justify-center p-6">
@@ -33,8 +167,8 @@ export default function OnboardingPage() {
                         <div key={step.id} className="flex items-center">
                             <div
                                 className={`flex items-center justify-center w-10 h-10 rounded-full border-2 transition-colors ${currentStep >= step.id
-                                        ? "bg-[var(--color-primary)] border-[var(--color-primary)]"
-                                        : "border-[var(--color-primary)]/30"
+                                    ? "bg-[var(--color-primary)] border-[var(--color-primary)]"
+                                    : "border-[var(--color-primary)]/30"
                                     }`}
                             >
                                 {currentStep > step.id ? (
@@ -42,8 +176,8 @@ export default function OnboardingPage() {
                                 ) : (
                                     <span
                                         className={`text-sm font-medium ${currentStep >= step.id
-                                                ? "text-[var(--color-base)]"
-                                                : "text-[var(--color-text-muted)]"
+                                            ? "text-[var(--color-base)]"
+                                            : "text-[var(--color-text-muted)]"
                                             }`}
                                     >
                                         {step.id}
@@ -53,8 +187,8 @@ export default function OnboardingPage() {
                             {index < steps.length - 1 && (
                                 <div
                                     className={`w-16 h-0.5 mx-2 ${currentStep > step.id
-                                            ? "bg-[var(--color-primary)]"
-                                            : "bg-[var(--color-primary)]/30"
+                                        ? "bg-[var(--color-primary)]"
+                                        : "bg-[var(--color-primary)]/30"
                                         }`}
                                 />
                             )}
@@ -72,39 +206,60 @@ export default function OnboardingPage() {
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
-                            <form className="space-y-4">
+                            <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); handleStep1Continue(); }}>
                                 <div>
                                     <label className="block text-sm font-medium text-[var(--color-text-light)] mb-2">
                                         Church Name
                                     </label>
-                                    <Input type="text" placeholder="Grace Community Church" />
+                                    <Input
+                                        type="text"
+                                        placeholder="Grace Community Church"
+                                        value={churchName || organization?.name || ""}
+                                        onChange={(e) => setChurchName(e.target.value)}
+                                    />
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-[var(--color-text-light)] mb-2">
                                         Denomination (Optional)
                                     </label>
-                                    <Input type="text" placeholder="Non-denominational" />
+                                    <Input
+                                        type="text"
+                                        placeholder="Non-denominational"
+                                        value={denomination}
+                                        onChange={(e) => setDenomination(e.target.value)}
+                                    />
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-[var(--color-text-light)] mb-2">
                                         Church Size
                                     </label>
-                                    <select className="flex h-11 w-full rounded-[var(--radius-default)] bg-[var(--color-surface)] px-4 py-2 text-sm text-[var(--color-text-light)] border border-[var(--color-primary)]/20 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]">
-                                        <option>Select size...</option>
-                                        <option>Under 100</option>
-                                        <option>100 - 500</option>
-                                        <option>500 - 1,000</option>
-                                        <option>1,000 - 5,000</option>
-                                        <option>5,000+</option>
+                                    <select
+                                        className="flex h-11 w-full rounded-[var(--radius-default)] bg-[var(--color-surface)] px-4 py-2 text-sm text-[var(--color-text-light)] border border-[var(--color-primary)]/20 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
+                                        value={churchSize}
+                                        onChange={(e) => setChurchSize(e.target.value)}
+                                    >
+                                        <option value="">Select size...</option>
+                                        <option value="under_100">Under 100</option>
+                                        <option value="100_500">100 - 500</option>
+                                        <option value="500_1000">500 - 1,000</option>
+                                        <option value="1000_5000">1,000 - 5,000</option>
+                                        <option value="5000_plus">5,000+</option>
                                     </select>
                                 </div>
                                 <Button
-                                    type="button"
+                                    type="submit"
                                     className="w-full"
                                     size="lg"
-                                    onClick={() => setCurrentStep(2)}
+                                    disabled={isSubmitting || !orgLoaded}
                                 >
-                                    Continue
+                                    {isSubmitting ? (
+                                        <>
+                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                            Saving...
+                                        </>
+                                    ) : (
+                                        "Continue"
+                                    )}
                                 </Button>
                             </form>
                         </CardContent>
@@ -128,46 +283,64 @@ export default function OnboardingPage() {
                                         Church Logo
                                     </label>
                                     <div className="grid grid-cols-2 gap-4">
-                                        <div className="border-2 border-dashed border-[var(--color-primary)]/30 rounded-[var(--radius-default)] p-6 text-center hover:border-[var(--color-primary)] transition-colors cursor-pointer">
-                                            <Upload className="h-8 w-8 mx-auto mb-2 text-[var(--color-text-muted)]" />
-                                            <p className="text-sm text-[var(--color-text-muted)]">
-                                                Light version
-                                            </p>
+                                        <div
+                                            className="border-2 border-dashed border-[var(--color-primary)]/30 rounded-[var(--radius-default)] p-6 text-center hover:border-[var(--color-primary)] transition-colors cursor-pointer relative overflow-hidden"
+                                            onClick={() => handleLogoUpload("light")}
+                                        >
+                                            {logoLightUrl ? (
+                                                <img
+                                                    src={logoLightUrl}
+                                                    alt="Light logo"
+                                                    className="h-12 w-auto mx-auto object-contain"
+                                                />
+                                            ) : (
+                                                <>
+                                                    <Upload className="h-8 w-8 mx-auto mb-2 text-[var(--color-text-muted)]" />
+                                                    <p className="text-sm text-[var(--color-text-muted)]">
+                                                        Light version
+                                                    </p>
+                                                </>
+                                            )}
                                         </div>
-                                        <div className="border-2 border-dashed border-[var(--color-primary)]/30 rounded-[var(--radius-default)] p-6 text-center hover:border-[var(--color-primary)] transition-colors cursor-pointer bg-[var(--color-text-light)]/5">
-                                            <Upload className="h-8 w-8 mx-auto mb-2 text-[var(--color-text-muted)]" />
-                                            <p className="text-sm text-[var(--color-text-muted)]">
-                                                Dark version
-                                            </p>
+                                        <div
+                                            className="border-2 border-dashed border-[var(--color-primary)]/30 rounded-[var(--radius-default)] p-6 text-center hover:border-[var(--color-primary)] transition-colors cursor-pointer bg-[var(--color-text-light)]/5 relative overflow-hidden"
+                                            onClick={() => handleLogoUpload("dark")}
+                                        >
+                                            {logoDarkUrl ? (
+                                                <img
+                                                    src={logoDarkUrl}
+                                                    alt="Dark logo"
+                                                    className="h-12 w-auto mx-auto object-contain"
+                                                />
+                                            ) : (
+                                                <>
+                                                    <Upload className="h-8 w-8 mx-auto mb-2 text-[var(--color-text-muted)]" />
+                                                    <p className="text-sm text-[var(--color-text-muted)]">
+                                                        Dark version
+                                                    </p>
+                                                </>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
 
-                                {/* Colors */}
+                                {/* Colors with Color Picker */}
                                 <div>
                                     <label className="flex items-center gap-2 text-sm font-medium text-[var(--color-text-light)] mb-2">
                                         <Palette className="h-4 w-4" />
                                         Brand Colors
                                     </label>
                                     <div className="grid grid-cols-2 gap-4">
-                                        <div>
-                                            <label className="block text-xs text-[var(--color-text-muted)] mb-1">
-                                                Primary Color
-                                            </label>
-                                            <div className="flex gap-2">
-                                                <div className="w-11 h-11 rounded bg-blue-500 border border-white/20" />
-                                                <Input type="text" placeholder="#0066CC" className="flex-1" />
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <label className="block text-xs text-[var(--color-text-muted)] mb-1">
-                                                Secondary Color
-                                            </label>
-                                            <div className="flex gap-2">
-                                                <div className="w-11 h-11 rounded bg-orange-500 border border-white/20" />
-                                                <Input type="text" placeholder="#FF6600" className="flex-1" />
-                                            </div>
-                                        </div>
+                                        <ColorPicker
+                                            value={primaryColor}
+                                            onChange={setPrimaryColor}
+                                            label="Primary Color"
+                                        />
+                                        <ColorPicker
+                                            value={secondaryColor}
+                                            onChange={setSecondaryColor}
+                                            label="Secondary Color"
+                                        />
                                     </div>
                                 </div>
 
@@ -177,12 +350,17 @@ export default function OnboardingPage() {
                                         <Type className="h-4 w-4" />
                                         Font Family
                                     </label>
-                                    <select className="flex h-11 w-full rounded-[var(--radius-default)] bg-[var(--color-surface)] px-4 py-2 text-sm text-[var(--color-text-light)] border border-[var(--color-primary)]/20 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]">
-                                        <option>Roboto</option>
-                                        <option>Open Sans</option>
-                                        <option>Lato</option>
-                                        <option>Montserrat</option>
-                                        <option>Poppins</option>
+                                    <select
+                                        className="flex h-11 w-full rounded-[var(--radius-default)] bg-[var(--color-surface)] px-4 py-2 text-sm text-[var(--color-text-light)] border border-[var(--color-primary)]/20 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
+                                        value={fontFamily}
+                                        onChange={(e) => setFontFamily(e.target.value)}
+                                    >
+                                        <option value="Roboto">Roboto</option>
+                                        <option value="Open Sans">Open Sans</option>
+                                        <option value="Lato">Lato</option>
+                                        <option value="Montserrat">Montserrat</option>
+                                        <option value="Poppins">Poppins</option>
+                                        <option value="Inter">Inter</option>
                                     </select>
                                 </div>
 
@@ -200,9 +378,17 @@ export default function OnboardingPage() {
                                         type="button"
                                         className="flex-1"
                                         size="lg"
-                                        onClick={() => setCurrentStep(3)}
+                                        onClick={handleStep2Continue}
+                                        disabled={isSubmitting}
                                     >
-                                        Continue
+                                        {isSubmitting ? (
+                                            <>
+                                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                                Saving...
+                                            </>
+                                        ) : (
+                                            "Continue"
+                                        )}
                                     </Button>
                                 </div>
                                 <button

@@ -77,8 +77,8 @@ export default function ClipsPage() {
                         key={clip.id}
                         onClick={() => setSelectedClip(clip)}
                         className={`cursor-pointer transition-all ${selectedClip?.id === clip.id
-                                ? "border-[var(--color-primary)] bg-[var(--color-primary)]/10"
-                                : "hover:border-[var(--color-primary)]/50"
+                            ? "border-[var(--color-primary)] bg-[var(--color-primary)]/10"
+                            : "hover:border-[var(--color-primary)]/50"
                             }`}
                     >
                         <div className="p-3">
@@ -134,7 +134,7 @@ export default function ClipsPage() {
                                     <div className="flex items-center gap-4 text-sm text-[var(--color-text-muted)]">
                                         <span className="font-mono">{selectedClip.duration}</span>
                                         <span>Starting at {selectedClip.timestamp}</span>
-                                        <Badge variant="ai">AI Score: {selectedClip.score}%</Badge>
+                                        <Badge variant="ai">Viral Score: {selectedClip.score}%</Badge>
                                     </div>
                                 </div>
                             </div>

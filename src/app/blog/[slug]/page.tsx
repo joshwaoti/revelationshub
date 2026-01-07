@@ -24,7 +24,7 @@ export default function BlogPostPage() {
                     <header className="mb-8">
                         <Badge variant="outline" className="mb-4">Technology</Badge>
                         <h1 className="font-display text-3xl sm:text-4xl font-bold text-[var(--color-text-light)] mb-4">
-                            How AI Video Editing is Transforming Church Communication
+                            How Smart Video Editing is Transforming Church Communication
                         </h1>
                         <div className="flex flex-wrap items-center gap-4 text-sm text-[var(--color-text-muted)]">
                             <span className="flex items-center gap-1">
@@ -53,7 +53,7 @@ export default function BlogPostPage() {
                         </p>
 
                         <p className="leading-relaxed mb-6">
-                            The answer is increasingly found in artificial intelligence. AI-powered video editing tools are
+                            The answer is increasingly found in intelligent automation. Smart video editing tools are
                             transforming how churches repurpose and share their messages, making it possible to create
                             professional-quality content without a full media team.
                         </p>
@@ -72,9 +72,9 @@ export default function BlogPostPage() {
                             means their most powerful moments may never be seen.
                         </p>
 
-                        <h2 className="font-display text-2xl font-bold mt-10 mb-4">How AI Changes Everything</h2>
+                        <h2 className="font-display text-2xl font-bold mt-10 mb-4">How Smart Tools Change Everything</h2>
                         <p className="leading-relaxed mb-6">
-                            AI video editing tools address this challenge head-on. By analyzing sermon transcripts, these
+                            Smart video editing tools address this challenge head-on. By analyzing sermon transcripts, these
                             tools can automatically identify the most impactful moments—the &quot;aha&quot; insights, the powerful
                             illustrations, the emotional peaks—and extract them as standalone clips.
                         </p>
@@ -89,7 +89,7 @@ export default function BlogPostPage() {
 
                         <h2 className="font-display text-2xl font-bold mt-10 mb-4">Beyond Just Clips</h2>
                         <p className="leading-relaxed mb-6">
-                            But the transformation goes beyond video clips. Modern AI tools can generate discussion guides
+                            But the transformation goes beyond video clips. Modern intelligent tools can generate discussion guides
                             for small groups, create quote graphics for social media, extract podcast-ready audio, and even
                             write blog posts—all from a single sermon recording.
                         </p>
@@ -101,7 +101,7 @@ export default function BlogPostPage() {
 
                         <h2 className="font-display text-2xl font-bold mt-10 mb-4">Getting Started</h2>
                         <p className="leading-relaxed mb-6">
-                            If you&apos;re ready to explore how AI can amplify your ministry&apos;s message, start by evaluating
+                            If you&apos;re ready to explore how smart tools can amplify your ministry&apos;s message, start by evaluating
                             your current content workflow. Ask yourself:
                         </p>
 
@@ -112,7 +112,7 @@ export default function BlogPostPage() {
                         </ul>
 
                         <p className="leading-relaxed mb-6">
-                            The good news is that AI tools are becoming increasingly accessible and affordable. Many offer
+                            The good news is that these tools are becoming increasingly accessible and affordable. Many offer
                             free trials, allowing you to experience the transformation firsthand before committing.
                         </p>
 
@@ -122,7 +122,7 @@ export default function BlogPostPage() {
                                 Ready to Transform Your Ministry?
                             </p>
                             <p className="text-[var(--color-text-muted)] mb-4">
-                                Try RevelationsHub free for 14 days and see how AI can amplify your message.
+                                Try RevelationsHub free for 14 days and see how it can amplify your message.
                             </p>
                             <Link href="/sign-up">
                                 <Button>Start Free Trial</Button>

@@ -48,7 +48,7 @@ export default function SummariesPage() {
                         Summaries
                     </h1>
                     <p className="text-sm text-[var(--color-text-muted)]">
-                        AI-generated summaries in multiple formats
+                        Auto-generated summaries in multiple formats
                     </p>
                 </div>
                 <Button variant="ghost" size="sm">

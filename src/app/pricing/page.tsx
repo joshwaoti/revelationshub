@@ -9,7 +9,7 @@ const pricingPlans = [
         description: "For growing ministries",
         features: [
             "Unlimited video clips",
-            "AI Camera Crew (auto-reframe)",
+            "Smart Camera Crew (auto-reframe)",
             "Podcast audio export",
             "Transcription editing",
             "Basic templates",

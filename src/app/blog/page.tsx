@@ -8,9 +8,9 @@ import Link from "next/link";
 
 const blogPosts = [
     {
-        slug: "ai-video-editing-for-churches",
-        title: "How AI Video Editing is Transforming Church Communication",
-        excerpt: "Discover how artificial intelligence is helping churches create more engaging content with less effort.",
+        slug: "smart-video-editing-for-churches",
+        title: "How Smart Video Editing is Transforming Church Communication",
+        excerpt: "Discover how intelligent tools are helping churches create more engaging content with less effort.",
         category: "Technology",
         author: "Sarah Johnson",
         date: "Dec 20, 2024",
@@ -29,7 +29,7 @@ const blogPosts = [
     },
     {
         slug: "small-group-discussion-guides",
-        title: "Why Your Church Needs AI-Generated Discussion Guides",
+        title: "Why Your Church Needs Auto-Generated Discussion Guides",
         excerpt: "See how automated discussion guides can deepen small group engagement and save hours of preparation.",
         category: "Discipleship",
         author: "Emily Chen",

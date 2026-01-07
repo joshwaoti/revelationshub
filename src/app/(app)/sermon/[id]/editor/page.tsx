@@ -227,8 +227,8 @@ export default function VideoEditorPage() {
                                         <button
                                             key={ratio}
                                             className={`p-2 text-sm rounded-[var(--radius-sm)] border transition-colors ${ratio === "9:16"
-                                                    ? "border-[var(--color-primary)] bg-[var(--color-primary)]/10 text-[var(--color-primary)]"
-                                                    : "border-[var(--color-border)] text-[var(--color-text-muted)] hover:border-[var(--color-primary)]"
+                                                ? "border-[var(--color-primary)] bg-[var(--color-primary)]/10 text-[var(--color-primary)]"
+                                                : "border-[var(--color-border)] text-[var(--color-text-muted)] hover:border-[var(--color-primary)]"
                                                 }`}
                                         >
                                             {ratio}
@@ -251,7 +251,7 @@ export default function VideoEditorPage() {
 
                             <div>
                                 <label className="block text-sm text-[var(--color-text-muted)] mb-2">
-                                    AI Reframe
+                                    Smart Reframe
                                 </label>
                                 <div className="space-y-2 text-sm text-[var(--color-text-muted)]">
                                     <label className="flex items-center gap-2">

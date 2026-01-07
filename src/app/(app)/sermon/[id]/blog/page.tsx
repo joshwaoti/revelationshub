@@ -14,7 +14,7 @@ export default function BlogPostPage() {
                         Blog Post
                     </h1>
                     <p className="text-sm text-[var(--color-text-muted)]">
-                        AI-generated article from your sermon
+                        Auto-generated article from your sermon
                     </p>
                 </div>
                 <div className="flex flex-wrap gap-2">

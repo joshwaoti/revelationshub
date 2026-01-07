@@ -36,7 +36,7 @@ const clips = [
     { id: 4, title: "Finding stillness", duration: "0:41", score: 79 },
 ];
 
-// Mock AI insights
+// Mock smart insights
 const insights = [
     { label: "Key Theme", value: "Inner Peace" },
     { label: "Scripture References", value: "3 passages" },
@@ -166,7 +166,7 @@ export default function SermonDashboardPage() {
                     </Card>
                 </motion.div>
 
-                {/* AI Insights */}
+                {/* Smart Insights */}
                 <motion.div variants={itemVariants}>
                     <Card className="h-full">
                         <CardHeader className="pb-3">
@@ -177,7 +177,7 @@ export default function SermonDashboardPage() {
                                 >
                                     <Sparkles className="h-4 w-4 text-[var(--color-secondary)]" />
                                 </motion.div>
-                                AI Insights
+                                Smart Insights
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
