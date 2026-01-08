@@ -10,6 +10,7 @@ const badgeVariants = cva(
                 default: "bg-[var(--color-primary)] text-[var(--color-base)]",
                 secondary: "bg-[var(--color-secondary)] text-[var(--color-base)]",
                 success: "bg-[var(--color-success)] text-white",
+                destructive: "bg-red-500 text-white",
                 processing: "bg-[var(--color-primary)]/20 text-[var(--color-primary)] border border-[var(--color-primary)]/30",
                 outline: "border border-[var(--color-primary)] text-[var(--color-primary)] bg-transparent",
                 ai: "bg-gradient-to-r from-[var(--color-secondary)] to-[var(--color-primary)] text-[var(--color-base)]",

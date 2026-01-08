@@ -1,5 +1,9 @@
 "use client";
 
+import { use } from "react";
+import { useQuery, useMutation } from "convex/react";
+import { api } from "../../../../../convex/_generated/api";
+import { Id } from "../../../../../convex/_generated/dataModel";
 import { motion } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -12,46 +16,24 @@ import {
     Calendar,
     User,
     BookOpen,
+    Loader2,
+    RefreshCw,
+    FileText,
+    Quote,
+    Image,
+    MessageSquare,
+    Pen,
+    BookMarked,
+    AlertCircle,
 } from "lucide-react";
 import Link from "next/link";
-
-// Mock sermon data
-const sermon = {
-    id: "1",
-    title: "Finding Peace in Chaos",
-    series: "Inner Strength",
-    speaker: "Pastor Michael",
-    date: "Dec 15, 2024",
-    duration: "42:15",
-    status: "ready",
-    description:
-        "In this powerful message, Pastor Michael explores how to find inner peace even when life feels overwhelming. Drawing from Scripture and real-world experiences, discover practical steps to cultivate calm in the midst of chaos.",
-};
-
-// Mock clips data
-const clips = [
-    { id: 1, title: "The eye of the storm", duration: "0:45", score: 95 },
-    { id: 2, title: "Peace is a choice", duration: "0:52", score: 88 },
-    { id: 3, title: "Letting go of control", duration: "0:38", score: 82 },
-    { id: 4, title: "Finding stillness", duration: "0:41", score: 79 },
-];
-
-// Mock smart insights
-const insights = [
-    { label: "Key Theme", value: "Inner Peace" },
-    { label: "Scripture References", value: "3 passages" },
-    { label: "Stories/Illustrations", value: "4 identified" },
-    { label: "Viral Potential", value: "High" },
-];
 
 // Animation variants
 const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
         opacity: 1,
-        transition: {
-            staggerChildren: 0.1,
-        },
+        transition: { staggerChildren: 0.1 },
     },
 };
 
@@ -73,7 +55,91 @@ const headerVariants = {
     },
 };
 
-export default function SermonDashboardPage() {
+// Format duration from seconds to MM:SS
+function formatDuration(seconds?: number): string {
+    if (!seconds) return "--:--";
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
+}
+
+// Format date
+function formatDate(timestamp?: number): string {
+    if (!timestamp) return "--";
+    return new Date(timestamp).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+    });
+}
+
+export default function SermonDashboardPage({ params }: { params: Promise<{ id: string }> }) {
+    const resolvedParams = use(params);
+    const sermonId = resolvedParams.id as Id<"sermons">;
+
+    // Fetch sermon data
+    const sermon = useQuery(api.sermons.getById, { sermonId });
+
+    // Fetch clips
+    const clips = useQuery(
+        api.clips.getBySermon,
+        sermon?._id ? { sermonId: sermon._id } : "skip"
+    );
+
+    // Fetch transcript
+    const transcript = useQuery(
+        api.transcripts.getBySermon,
+        sermon?._id ? { sermonId: sermon._id } : "skip"
+    );
+
+    // Fetch generated content
+    const generatedContent = useQuery(
+        api.generatedContent.getBySermon,
+        sermon?._id ? { sermonId: sermon._id } : "skip"
+    );
+
+    // Loading state
+    if (sermon === undefined) {
+        return (
+            <div className="flex items-center justify-center min-h-[60vh]">
+                <Loader2 className="h-8 w-8 animate-spin text-[var(--color-primary)]" />
+            </div>
+        );
+    }
+
+    // Not found
+    if (sermon === null) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
+                <AlertCircle className="h-12 w-12 text-[var(--color-text-muted)] mb-4" />
+                <h2 className="text-xl font-semibold text-[var(--color-text-light)] mb-2">
+                    Sermon Not Found
+                </h2>
+                <p className="text-[var(--color-text-muted)] mb-4">
+                    This sermon may have been deleted or doesn&apos;t exist.
+                </p>
+                <Link href="/library">
+                    <Button>Back to Library</Button>
+                </Link>
+            </div>
+        );
+    }
+
+    // Get content counts by type
+    const contentCounts = {
+        quotes: generatedContent?.filter(c => c.type === "quote" && c.status === "ready").length || 0,
+        carousel: generatedContent?.filter(c => c.type === "carousel" && c.status === "ready").length || 0,
+        devotional: generatedContent?.filter(c => c.type === "devotional" && c.status === "ready").length || 0,
+        discussionGuide: generatedContent?.filter(c => c.type === "discussion_guide" && c.status === "ready").length || 0,
+        blogPost: generatedContent?.filter(c => c.type === "blog_post" && c.status === "ready").length || 0,
+        outline: generatedContent?.filter(c => c.type === "sermon_outline" && c.status === "ready").length || 0,
+    };
+
+    // Processing status
+    const isProcessing = sermon.status === "processing" || sermon.status === "uploading";
+    const readyClips = clips?.filter(c => c.status === "ready") || [];
+    const processingClips = clips?.filter(c => c.status === "processing" || c.status === "pending") || [];
+
     return (
         <motion.div
             className="space-y-6"
@@ -91,54 +157,115 @@ export default function SermonDashboardPage() {
                         <h1 className="font-display text-2xl md:text-3xl font-bold text-[var(--color-text-light)]">
                             {sermon.title}
                         </h1>
-                        <Badge variant="success">Ready</Badge>
+                        <Badge
+                            variant={
+                                sermon.status === "ready"
+                                    ? "success"
+                                    : sermon.status === "processing"
+                                        ? "processing"
+                                        : sermon.status === "failed"
+                                            ? "destructive"
+                                            : "secondary"
+                            }
+                        >
+                            {sermon.status === "ready"
+                                ? "Ready"
+                                : sermon.status === "processing"
+                                    ? "Processing"
+                                    : sermon.status === "uploading"
+                                        ? "Uploading"
+                                        : "Failed"}
+                        </Badge>
                     </div>
                     <div className="flex flex-wrap items-center gap-4 text-sm text-[var(--color-text-muted)]">
-                        <span className="flex items-center gap-1">
-                            <User className="h-3.5 w-3.5" />
-                            {sermon.speaker}
-                        </span>
-                        <span className="flex items-center gap-1">
-                            <BookOpen className="h-3.5 w-3.5" />
-                            {sermon.series}
-                        </span>
+                        {sermon.speaker && (
+                            <span className="flex items-center gap-1">
+                                <User className="h-3.5 w-3.5" />
+                                {sermon.speaker}
+                            </span>
+                        )}
+                        {sermon.series && (
+                            <span className="flex items-center gap-1">
+                                <BookOpen className="h-3.5 w-3.5" />
+                                {sermon.series}
+                            </span>
+                        )}
                         <span className="flex items-center gap-1">
                             <Calendar className="h-3.5 w-3.5" />
-                            {sermon.date}
+                            {formatDate(sermon.createdAt)}
                         </span>
                         <span className="flex items-center gap-1">
                             <Clock className="h-3.5 w-3.5" />
-                            {sermon.duration}
+                            {formatDuration(sermon.duration)}
                         </span>
                     </div>
                 </div>
                 <div className="flex items-center gap-3">
+                    {sermon.youtubeUrl && (
+                        <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                            <a href={sermon.youtubeUrl} target="_blank" rel="noopener noreferrer">
+                                <Button variant="outline">
+                                    <Play className="h-4 w-4 mr-2" />
+                                    Watch on YouTube
+                                </Button>
+                            </a>
+                        </motion.div>
+                    )}
                     <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                        <Button variant="outline">
-                            <Play className="h-4 w-4 mr-2" />
-                            Watch Full Sermon
-                        </Button>
-                    </motion.div>
-                    <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                        <Button variant="secondary">
-                            <Sparkles className="h-4 w-4 mr-2" />
-                            Generate Content
+                        <Button variant="secondary" disabled={isProcessing}>
+                            {isProcessing ? (
+                                <>
+                                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                                    Processing...
+                                </>
+                            ) : (
+                                <>
+                                    <Sparkles className="h-4 w-4 mr-2" />
+                                    Generate More
+                                </>
+                            )}
                         </Button>
                     </motion.div>
                 </div>
             </motion.div>
 
+            {/* Processing Status Banner */}
+            {isProcessing && (
+                <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="bg-[var(--color-primary)]/10 border border-[var(--color-primary)]/20 rounded-lg p-4"
+                >
+                    <div className="flex items-center gap-3">
+                        <Loader2 className="h-5 w-5 animate-spin text-[var(--color-primary)]" />
+                        <div>
+                            <p className="font-medium text-[var(--color-text-light)]">
+                                Your sermon is being processed
+                            </p>
+                            <p className="text-sm text-[var(--color-text-muted)]">
+                                This may take a few minutes. Clips and content will appear automatically when ready.
+                            </p>
+                        </div>
+                    </div>
+                </motion.div>
+            )}
+
             {/* Bento Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Video Player - Large */}
-                <motion.div
-                    className="lg:col-span-2 lg:row-span-2"
-                    variants={itemVariants}
-                >
+                <motion.div className="lg:col-span-2 lg:row-span-2" variants={itemVariants}>
                     <Card className="overflow-hidden h-full">
                         <div className="relative aspect-video bg-[var(--color-base)]">
-                            <div className="absolute inset-0 bg-gradient-to-br from-[var(--color-primary)]/20 to-[var(--color-secondary)]/20" />
-                            <div className="absolute inset-0 flex items-center justify-center">
+                            {sermon.thumbnailUrl ? (
+                                <img
+                                    src={sermon.thumbnailUrl}
+                                    alt={sermon.title}
+                                    className="absolute inset-0 w-full h-full object-cover"
+                                />
+                            ) : (
+                                <div className="absolute inset-0 bg-gradient-to-br from-[var(--color-primary)]/20 to-[var(--color-secondary)]/20" />
+                            )}
+                            <div className="absolute inset-0 flex items-center justify-center bg-black/30">
                                 <motion.button
                                     className="h-16 w-16 rounded-full bg-[var(--color-primary)] flex items-center justify-center"
                                     whileHover={{ scale: 1.1 }}
@@ -148,25 +275,14 @@ export default function SermonDashboardPage() {
                                     <Play className="h-7 w-7 text-[var(--color-base)] ml-1" />
                                 </motion.button>
                             </div>
-                            <div className="absolute bottom-4 left-4 right-4">
-                                <div className="h-1 bg-white/20 rounded-full overflow-hidden">
-                                    <motion.div
-                                        className="h-full bg-[var(--color-primary)] rounded-full"
-                                        initial={{ width: 0 }}
-                                        animate={{ width: "33%" }}
-                                        transition={{ duration: 1, delay: 0.5 }}
-                                    />
-                                </div>
-                                <div className="flex justify-between mt-2 text-xs text-white/80 font-mono">
-                                    <span>14:23</span>
-                                    <span>{sermon.duration}</span>
-                                </div>
+                            <div className="absolute bottom-4 right-4 bg-black/60 px-2 py-1 rounded text-sm text-white font-mono">
+                                {formatDuration(sermon.duration)}
                             </div>
                         </div>
                     </Card>
                 </motion.div>
 
-                {/* Smart Insights */}
+                {/* Processing Stats */}
                 <motion.div variants={itemVariants}>
                     <Card className="h-full">
                         <CardHeader className="pb-3">
@@ -177,60 +293,91 @@ export default function SermonDashboardPage() {
                                 >
                                     <Sparkles className="h-4 w-4 text-[var(--color-secondary)]" />
                                 </motion.div>
-                                Smart Insights
+                                Content Stats
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
                             <div className="space-y-3">
-                                {insights.map((insight, index) => (
-                                    <motion.div
-                                        key={insight.label}
+                                <div className="flex items-center justify-between p-2 rounded-lg hover:bg-[var(--color-surface)] transition-colors">
+                                    <span className="text-sm text-[var(--color-text-muted)] flex items-center gap-2">
+                                        <Wand2 className="h-4 w-4" />
+                                        Clips Generated
+                                    </span>
+                                    <span className="text-sm font-medium text-[var(--color-text-light)]">
+                                        {readyClips.length}
+                                    </span>
+                                </div>
+                                <div className="flex items-center justify-between p-2 rounded-lg hover:bg-[var(--color-surface)] transition-colors">
+                                    <span className="text-sm text-[var(--color-text-muted)] flex items-center gap-2">
+                                        <Quote className="h-4 w-4" />
+                                        Quotes
+                                    </span>
+                                    <span className="text-sm font-medium text-[var(--color-text-light)]">
+                                        {contentCounts.quotes}
+                                    </span>
+                                </div>
+                                <div className="flex items-center justify-between p-2 rounded-lg hover:bg-[var(--color-surface)] transition-colors">
+                                    <span className="text-sm text-[var(--color-text-muted)] flex items-center gap-2">
+                                        <FileText className="h-4 w-4" />
+                                        Has Transcript
+                                    </span>
+                                    <span className="text-sm font-medium text-[var(--color-text-light)]">
+                                        {transcript ? "Yes" : "No"}
+                                    </span>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </motion.div>
+
+                {/* Content Status */}
+                <motion.div variants={itemVariants}>
+                    <Card className="h-full">
+                        <CardHeader className="pb-3">
+                            <CardTitle className="text-lg">Content Status</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="space-y-2">
+                                {[
+                                    { name: "Carousel", count: contentCounts.carousel, icon: Image },
+                                    { name: "Discussion Guide", count: contentCounts.discussionGuide, icon: MessageSquare },
+                                    { name: "Devotional", count: contentCounts.devotional, icon: BookMarked },
+                                    { name: "Blog Post", count: contentCounts.blogPost, icon: Pen },
+                                    { name: "Outline", count: contentCounts.outline, icon: FileText },
+                                ].map((item) => (
+                                    <div
+                                        key={item.name}
                                         className="flex items-center justify-between p-2 rounded-lg hover:bg-[var(--color-surface)] transition-colors"
-                                        initial={{ opacity: 0, x: -10 }}
-                                        animate={{ opacity: 1, x: 0 }}
-                                        transition={{ delay: 0.5 + index * 0.1 }}
                                     >
-                                        <span className="text-sm text-[var(--color-text-muted)]">
-                                            {insight.label}
+                                        <span className="text-sm text-[var(--color-text-muted)] flex items-center gap-2">
+                                            <item.icon className="h-4 w-4" />
+                                            {item.name}
                                         </span>
-                                        <span className="text-sm font-medium text-[var(--color-text-light)]">
-                                            {insight.value}
-                                        </span>
-                                    </motion.div>
+                                        {item.count > 0 ? (
+                                            <Badge variant="success">Ready</Badge>
+                                        ) : isProcessing ? (
+                                            <Badge variant="processing">Generating</Badge>
+                                        ) : (
+                                            <Badge variant="secondary">Available</Badge>
+                                        )}
+                                    </div>
                                 ))}
                             </div>
                         </CardContent>
                     </Card>
                 </motion.div>
 
-                {/* Description */}
-                <motion.div variants={itemVariants}>
-                    <Card className="h-full">
-                        <CardHeader className="pb-3">
-                            <CardTitle className="text-lg">Description</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <p className="text-sm text-[var(--color-text-muted)] leading-relaxed">
-                                {sermon.description}
-                            </p>
-                        </CardContent>
-                    </Card>
-                </motion.div>
-
                 {/* Top Clips */}
-                <motion.div
-                    className="lg:col-span-2"
-                    variants={itemVariants}
-                >
+                <motion.div className="lg:col-span-2" variants={itemVariants}>
                     <Card>
                         <CardHeader className="pb-3">
                             <div className="flex items-center justify-between">
                                 <CardTitle className="text-lg flex items-center gap-2">
                                     <Wand2 className="h-4 w-4 text-[var(--color-primary)]" />
-                                    Top Clips
+                                    Clips ({readyClips.length})
                                 </CardTitle>
                                 <Link
-                                    href={`/sermon/${sermon.id}/clips`}
+                                    href={`/sermon/${sermon._id}/clips`}
                                     className="text-sm text-[var(--color-primary)] hover:underline"
                                 >
                                     View all
@@ -238,43 +385,59 @@ export default function SermonDashboardPage() {
                             </div>
                         </CardHeader>
                         <CardContent>
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                {clips.map((clip, index) => (
-                                    <motion.div
-                                        key={clip.id}
-                                        className="group cursor-pointer"
-                                        initial={{ opacity: 0, scale: 0.9 }}
-                                        animate={{ opacity: 1, scale: 1 }}
-                                        transition={{ delay: 0.6 + index * 0.1 }}
-                                        whileHover={{ y: -4 }}
-                                    >
-                                        <div className="relative aspect-[9/16] bg-[var(--color-base)] rounded-[var(--radius-default)] overflow-hidden mb-2 group-hover:ring-2 ring-[var(--color-primary)]/30 transition-all">
-                                            <div className="absolute inset-0 bg-gradient-to-br from-[var(--color-primary)]/30 to-[var(--color-secondary)]/30" />
-                                            <motion.div
-                                                className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                                            >
-                                                <motion.div
-                                                    className="h-10 w-10 rounded-full bg-[var(--color-primary)] flex items-center justify-center"
-                                                    whileHover={{ scale: 1.1 }}
-                                                >
-                                                    <Play className="h-4 w-4 text-[var(--color-base)] ml-0.5" />
-                                                </motion.div>
-                                            </motion.div>
-                                            <div className="absolute top-2 right-2">
-                                                <Badge variant="ai" className="text-[10px] px-1.5 py-0.5">
-                                                    {clip.score}%
-                                                </Badge>
-                                            </div>
-                                            <div className="absolute bottom-2 right-2 bg-black/60 px-1.5 py-0.5 rounded text-[10px] text-white font-mono">
-                                                {clip.duration}
-                                            </div>
+                            {readyClips.length === 0 ? (
+                                <div className="text-center py-8 text-[var(--color-text-muted)]">
+                                    {isProcessing ? (
+                                        <div className="flex flex-col items-center gap-2">
+                                            <Loader2 className="h-6 w-6 animate-spin" />
+                                            <p>Generating clips...</p>
                                         </div>
-                                        <p className="text-xs text-[var(--color-text-light)] line-clamp-2 group-hover:text-[var(--color-primary)] transition-colors">
-                                            {clip.title}
-                                        </p>
-                                    </motion.div>
-                                ))}
-                            </div>
+                                    ) : (
+                                        <p>No clips generated yet</p>
+                                    )}
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                    {readyClips.slice(0, 4).map((clip, index) => (
+                                        <motion.div
+                                            key={clip._id}
+                                            className="group cursor-pointer"
+                                            initial={{ opacity: 0, scale: 0.9 }}
+                                            animate={{ opacity: 1, scale: 1 }}
+                                            transition={{ delay: 0.1 + index * 0.1 }}
+                                            whileHover={{ y: -4 }}
+                                        >
+                                            <Link href={`/sermon/${sermon._id}/clips`}>
+                                                <div className="relative aspect-[9/16] bg-[var(--color-base)] rounded-[var(--radius-default)] overflow-hidden mb-2 group-hover:ring-2 ring-[var(--color-primary)]/30 transition-all">
+                                                    {clip.thumbnailUrl ? (
+                                                        <img
+                                                            src={clip.thumbnailUrl}
+                                                            alt={clip.title || "Clip"}
+                                                            className="absolute inset-0 w-full h-full object-cover"
+                                                        />
+                                                    ) : (
+                                                        <div className="absolute inset-0 bg-gradient-to-br from-[var(--color-primary)]/30 to-[var(--color-secondary)]/30" />
+                                                    )}
+                                                    <motion.div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/30">
+                                                        <motion.div
+                                                            className="h-10 w-10 rounded-full bg-[var(--color-primary)] flex items-center justify-center"
+                                                            whileHover={{ scale: 1.1 }}
+                                                        >
+                                                            <Play className="h-4 w-4 text-[var(--color-base)] ml-0.5" />
+                                                        </motion.div>
+                                                    </motion.div>
+                                                    <div className="absolute bottom-2 right-2 bg-black/60 px-1.5 py-0.5 rounded text-[10px] text-white font-mono">
+                                                        {formatDuration(clip.endTime - clip.startTime)}
+                                                    </div>
+                                                </div>
+                                                <p className="text-xs text-[var(--color-text-light)] line-clamp-2 group-hover:text-[var(--color-primary)] transition-colors">
+                                                    {clip.title || `Clip ${index + 1}`}
+                                                </p>
+                                            </Link>
+                                        </motion.div>
+                                    ))}
+                                </div>
+                            )}
                         </CardContent>
                     </Card>
                 </motion.div>
@@ -287,27 +450,35 @@ export default function SermonDashboardPage() {
                         </CardHeader>
                         <CardContent>
                             <div className="space-y-2">
-                                <Link href={`/sermon/${sermon.id}/clips`}>
+                                <Link href={`/sermon/${sermon._id}/clips`}>
                                     <motion.div whileHover={{ x: 4 }} whileTap={{ scale: 0.98 }}>
                                         <Button variant="ghost" className="w-full justify-start">
                                             <Wand2 className="h-4 w-4 mr-2 text-[var(--color-primary)]" />
-                                            Generate More Clips
+                                            View Clips
                                         </Button>
                                     </motion.div>
                                 </Link>
-                                <Link href={`/sermon/${sermon.id}/discussion-guide`}>
+                                <Link href={`/sermon/${sermon._id}/quotes`}>
                                     <motion.div whileHover={{ x: 4 }} whileTap={{ scale: 0.98 }}>
                                         <Button variant="ghost" className="w-full justify-start">
-                                            <BookOpen className="h-4 w-4 mr-2 text-[var(--color-secondary)]" />
-                                            Create Discussion Guide
+                                            <Quote className="h-4 w-4 mr-2 text-[var(--color-secondary)]" />
+                                            View Quotes
                                         </Button>
                                     </motion.div>
                                 </Link>
-                                <Link href={`/sermon/${sermon.id}/transcription`}>
+                                <Link href={`/sermon/${sermon._id}/discussion-guide`}>
                                     <motion.div whileHover={{ x: 4 }} whileTap={{ scale: 0.98 }}>
                                         <Button variant="ghost" className="w-full justify-start">
-                                            <Calendar className="h-4 w-4 mr-2 text-[var(--color-success)]" />
-                                            View Transcription
+                                            <BookOpen className="h-4 w-4 mr-2 text-[var(--color-success)]" />
+                                            Discussion Guide
+                                        </Button>
+                                    </motion.div>
+                                </Link>
+                                <Link href={`/sermon/${sermon._id}/transcription`}>
+                                    <motion.div whileHover={{ x: 4 }} whileTap={{ scale: 0.98 }}>
+                                        <Button variant="ghost" className="w-full justify-start">
+                                            <FileText className="h-4 w-4 mr-2 text-[var(--color-text-muted)]" />
+                                            View Transcript
                                         </Button>
                                     </motion.div>
                                 </Link>

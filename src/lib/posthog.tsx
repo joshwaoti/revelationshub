@@ -74,8 +74,8 @@ export const analytics = {
     },
 
     // Track content generation
-    trackContentGeneration: (type: string) => {
-        posthog.capture("content_generated", { type });
+    trackContentGeneration: (sermonId: string, types: string[], organizationId?: string) => {
+        posthog.capture("content_generated", { sermonId, types, organizationId });
     },
 
     // Track subscription events

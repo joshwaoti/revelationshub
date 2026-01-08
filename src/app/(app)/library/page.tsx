@@ -1,11 +1,16 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useOrganization } from "@clerk/nextjs";
+import { useQuery } from "convex/react";
+import { api } from "../../../../convex/_generated/api";
 import { motion, AnimatePresence } from "framer-motion";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { UploadSermonModal } from "@/components/upload-sermon-modal";
 import {
     Search,
     Upload,
@@ -15,87 +20,17 @@ import {
     Play,
     Clock,
     Calendar,
+    Video,
+    Loader2,
 } from "lucide-react";
 import Link from "next/link";
-
-// Mock data for sermon library
-const sermons = [
-    {
-        id: "1",
-        title: "Finding Peace in Chaos",
-        series: "Inner Strength",
-        speaker: "Pastor Michael",
-        date: "Dec 15, 2024",
-        duration: "42:15",
-        status: "ready" as const,
-        thumbnail: "/api/placeholder/320/180",
-        clips: 5,
-    },
-    {
-        id: "2",
-        title: "The Power of Forgiveness",
-        series: "Healing Hearts",
-        speaker: "Pastor Sarah",
-        date: "Dec 8, 2024",
-        duration: "38:22",
-        status: "processing" as const,
-        thumbnail: "/api/placeholder/320/180",
-        clips: 0,
-    },
-    {
-        id: "3",
-        title: "Walking in Faith",
-        series: "Journey of Faith",
-        speaker: "Pastor Michael",
-        date: "Dec 1, 2024",
-        duration: "45:10",
-        status: "ready" as const,
-        thumbnail: "/api/placeholder/320/180",
-        clips: 8,
-    },
-    {
-        id: "4",
-        title: "Love Your Neighbor",
-        series: "Community",
-        speaker: "Pastor David",
-        date: "Nov 24, 2024",
-        duration: "35:48",
-        status: "ready" as const,
-        thumbnail: "/api/placeholder/320/180",
-        clips: 4,
-    },
-    {
-        id: "5",
-        title: "Gratitude in All Things",
-        series: "Thanksgiving",
-        speaker: "Pastor Sarah",
-        date: "Nov 17, 2024",
-        duration: "40:05",
-        status: "ready" as const,
-        thumbnail: "/api/placeholder/320/180",
-        clips: 6,
-    },
-    {
-        id: "6",
-        title: "The Light Within",
-        series: "Inner Strength",
-        speaker: "Pastor Michael",
-        date: "Nov 10, 2024",
-        duration: "43:30",
-        status: "ready" as const,
-        thumbnail: "/api/placeholder/320/180",
-        clips: 7,
-    },
-];
 
 // Animation variants
 const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
         opacity: 1,
-        transition: {
-            staggerChildren: 0.08,
-        },
+        transition: { staggerChildren: 0.08 },
     },
 };
 
@@ -117,16 +52,65 @@ const headerVariants = {
     },
 };
 
+// Format duration from seconds to MM:SS
+function formatDuration(seconds?: number): string {
+    if (!seconds) return "--:--";
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
+}
+
+// Format date
+function formatDate(timestamp?: number): string {
+    if (!timestamp) return "--";
+    return new Date(timestamp).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+    });
+}
+
 export default function LibraryPage() {
+    const router = useRouter();
+    const { organization } = useOrganization();
+
     const [view, setView] = useState<"grid" | "list">("grid");
     const [searchQuery, setSearchQuery] = useState("");
+    const [uploadModalOpen, setUploadModalOpen] = useState(false);
 
-    const filteredSermons = sermons.filter(
+    // Get organization from Convex
+    const convexOrg = useQuery(
+        api.organizations.getByClerkId,
+        organization?.id ? { clerkOrgId: organization.id } : "skip"
+    );
+
+    // Get sermons from Convex
+    const sermons = useQuery(
+        api.sermons.getByOrg,
+        convexOrg?._id ? { organizationId: convexOrg._id } : "skip"
+    );
+
+    // Get clips count for each sermon
+    const clipsData = useQuery(
+        api.clips.getBySermon,
+        sermons && sermons.length > 0 && sermons[0]?._id ? { sermonId: sermons[0]._id } : "skip"
+    );
+
+    // Loading state
+    const isLoading = !organization || convexOrg === undefined || sermons === undefined;
+
+    // Filter sermons based on search
+    const filteredSermons = (sermons || []).filter(
         (sermon) =>
             sermon.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            sermon.series.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            sermon.speaker.toLowerCase().includes(searchQuery.toLowerCase())
+            (sermon.series?.toLowerCase().includes(searchQuery.toLowerCase())) ||
+            (sermon.speaker?.toLowerCase().includes(searchQuery.toLowerCase()))
     );
+
+    // Handle upload success
+    const handleUploadSuccess = (sermonId: string) => {
+        router.push(`/sermon/${sermonId}`);
+    };
 
     return (
         <div className="p-6">
@@ -142,14 +126,11 @@ export default function LibraryPage() {
                         Sermon Library
                     </h1>
                     <p className="text-[var(--color-text-muted)]">
-                        {sermons.length} sermons uploaded
+                        {sermons?.length || 0} sermons uploaded
                     </p>
                 </div>
                 <div className="flex items-center gap-4">
-                    <motion.div
-                        className="relative"
-                        whileFocus={{ scale: 1.02 }}
-                    >
+                    <motion.div className="relative" whileFocus={{ scale: 1.02 }}>
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--color-text-muted)]" />
                         <Input
                             type="text"
@@ -163,8 +144,8 @@ export default function LibraryPage() {
                         <motion.button
                             onClick={() => setView("grid")}
                             className={`p-2 rounded-[var(--radius-sm)] transition-colors ${view === "grid"
-                                ? "bg-[var(--color-primary)] text-[var(--color-base)]"
-                                : "text-[var(--color-text-muted)] hover:text-[var(--color-text-light)]"
+                                    ? "bg-[var(--color-primary)] text-[var(--color-base)]"
+                                    : "text-[var(--color-text-muted)] hover:text-[var(--color-text-light)]"
                                 }`}
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.95 }}
@@ -174,8 +155,8 @@ export default function LibraryPage() {
                         <motion.button
                             onClick={() => setView("list")}
                             className={`p-2 rounded-[var(--radius-sm)] transition-colors ${view === "list"
-                                ? "bg-[var(--color-primary)] text-[var(--color-base)]"
-                                : "text-[var(--color-text-muted)] hover:text-[var(--color-text-light)]"
+                                    ? "bg-[var(--color-primary)] text-[var(--color-base)]"
+                                    : "text-[var(--color-text-muted)] hover:text-[var(--color-text-light)]"
                                 }`}
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.95 }}
@@ -184,7 +165,7 @@ export default function LibraryPage() {
                         </motion.button>
                     </div>
                     <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                        <Button>
+                        <Button onClick={() => setUploadModalOpen(true)}>
                             <Upload className="h-4 w-4 mr-2" />
                             Upload Sermon
                         </Button>
@@ -192,9 +173,39 @@ export default function LibraryPage() {
                 </div>
             </motion.div>
 
+            {/* Loading State */}
+            {isLoading && (
+                <div className="flex items-center justify-center py-16">
+                    <Loader2 className="h-8 w-8 animate-spin text-[var(--color-primary)]" />
+                </div>
+            )}
+
+            {/* Empty State - No sermons yet */}
+            {!isLoading && sermons?.length === 0 && (
+                <motion.div
+                    className="text-center py-16"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                >
+                    <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-gradient-to-br from-[var(--color-primary)]/20 to-[var(--color-secondary)]/20 flex items-center justify-center">
+                        <Video className="h-10 w-10 text-[var(--color-primary)]" />
+                    </div>
+                    <h3 className="text-xl font-semibold text-[var(--color-text-light)] mb-2">
+                        No sermons yet
+                    </h3>
+                    <p className="text-[var(--color-text-muted)] mb-6 max-w-md mx-auto">
+                        Upload your first sermon to start generating clips, quotes, and more.
+                    </p>
+                    <Button size="lg" onClick={() => setUploadModalOpen(true)}>
+                        <Upload className="h-5 w-5 mr-2" />
+                        Upload Your First Sermon
+                    </Button>
+                </motion.div>
+            )}
+
             {/* Grid View */}
             <AnimatePresence mode="wait">
-                {view === "grid" && (
+                {!isLoading && view === "grid" && filteredSermons.length > 0 && (
                     <motion.div
                         key="grid"
                         className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
@@ -203,25 +214,24 @@ export default function LibraryPage() {
                         animate="visible"
                         exit={{ opacity: 0, transition: { duration: 0.2 } }}
                     >
-                        {filteredSermons.map((sermon, index) => (
-                            <motion.div
-                                key={sermon.id}
-                                variants={itemVariants}
-                                layout
-                            >
-                                <Link href={`/sermon/${sermon.id}`}>
-                                    <motion.div
-                                        whileHover={{
-                                            y: -4,
-                                            transition: { duration: 0.2 }
-                                        }}
-                                    >
+                        {filteredSermons.map((sermon) => (
+                            <motion.div key={sermon._id} variants={itemVariants} layout>
+                                <Link href={`/sermon/${sermon._id}`}>
+                                    <motion.div whileHover={{ y: -4, transition: { duration: 0.2 } }}>
                                         <Card className="group cursor-pointer overflow-hidden hover:border-[var(--color-secondary)] hover:shadow-[0_0_20px_rgba(243,154,157,0.3)] transition-all duration-300">
                                             <div className="relative aspect-video bg-[var(--color-base)]">
-                                                {/* Thumbnail placeholder */}
-                                                <div className="absolute inset-0 bg-gradient-to-br from-[var(--color-primary)]/20 to-[var(--color-secondary)]/20" />
+                                                {/* Thumbnail */}
+                                                {sermon.thumbnailUrl ? (
+                                                    <img
+                                                        src={sermon.thumbnailUrl}
+                                                        alt={sermon.title}
+                                                        className="absolute inset-0 w-full h-full object-cover"
+                                                    />
+                                                ) : (
+                                                    <div className="absolute inset-0 bg-gradient-to-br from-[var(--color-primary)]/20 to-[var(--color-secondary)]/20" />
+                                                )}
                                                 <motion.div
-                                                    className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                                    className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/30"
                                                     initial={false}
                                                 >
                                                     <motion.div
@@ -235,14 +245,28 @@ export default function LibraryPage() {
                                                 {/* Status Badge */}
                                                 <div className="absolute top-2 right-2">
                                                     <Badge
-                                                        variant={sermon.status === "ready" ? "success" : "processing"}
+                                                        variant={
+                                                            sermon.status === "ready"
+                                                                ? "success"
+                                                                : sermon.status === "processing"
+                                                                    ? "processing"
+                                                                    : sermon.status === "failed"
+                                                                        ? "destructive"
+                                                                        : "secondary"
+                                                        }
                                                     >
-                                                        {sermon.status === "ready" ? "Ready" : "Processing"}
+                                                        {sermon.status === "ready"
+                                                            ? "Ready"
+                                                            : sermon.status === "processing"
+                                                                ? "Processing"
+                                                                : sermon.status === "uploading"
+                                                                    ? "Uploading"
+                                                                    : "Failed"}
                                                     </Badge>
                                                 </div>
                                                 {/* Duration */}
                                                 <div className="absolute bottom-2 right-2 bg-black/60 px-2 py-0.5 rounded text-xs text-white font-mono">
-                                                    {sermon.duration}
+                                                    {formatDuration(sermon.duration)}
                                                 </div>
                                             </div>
                                             <div className="p-4">
@@ -250,22 +274,13 @@ export default function LibraryPage() {
                                                     {sermon.title}
                                                 </h3>
                                                 <p className="text-sm text-[var(--color-text-muted)] mb-2">
-                                                    {sermon.series} • {sermon.speaker}
+                                                    {sermon.series || "No series"} • {sermon.speaker || "Unknown"}
                                                 </p>
                                                 <div className="flex items-center justify-between text-xs text-[var(--color-text-muted)]">
                                                     <span className="flex items-center gap-1">
                                                         <Calendar className="h-3 w-3" />
-                                                        {sermon.date}
+                                                        {formatDate(sermon.createdAt)}
                                                     </span>
-                                                    {sermon.clips > 0 && (
-                                                        <motion.span
-                                                            className="text-[var(--color-primary)] font-medium"
-                                                            initial={{ scale: 1 }}
-                                                            whileHover={{ scale: 1.05 }}
-                                                        >
-                                                            {sermon.clips} clips
-                                                        </motion.span>
-                                                    )}
                                                 </div>
                                             </div>
                                         </Card>
@@ -277,7 +292,7 @@ export default function LibraryPage() {
                 )}
 
                 {/* List View */}
-                {view === "list" && (
+                {!isLoading && view === "list" && filteredSermons.length > 0 && (
                     <motion.div
                         key="list"
                         className="space-y-4"
@@ -286,27 +301,24 @@ export default function LibraryPage() {
                         animate="visible"
                         exit={{ opacity: 0, transition: { duration: 0.2 } }}
                     >
-                        {filteredSermons.map((sermon, index) => (
-                            <motion.div
-                                key={sermon.id}
-                                variants={itemVariants}
-                                layout
-                            >
-                                <Link href={`/sermon/${sermon.id}`}>
-                                    <motion.div
-                                        whileHover={{
-                                            x: 4,
-                                            transition: { duration: 0.2 }
-                                        }}
-                                    >
+                        {filteredSermons.map((sermon) => (
+                            <motion.div key={sermon._id} variants={itemVariants} layout>
+                                <Link href={`/sermon/${sermon._id}`}>
+                                    <motion.div whileHover={{ x: 4, transition: { duration: 0.2 } }}>
                                         <Card className="group cursor-pointer hover:border-[var(--color-secondary)] hover:shadow-[0_0_20px_rgba(243,154,157,0.3)] transition-all duration-300">
                                             <div className="flex items-center gap-6 p-5">
                                                 {/* Thumbnail */}
                                                 <div className="relative w-44 aspect-video bg-[var(--color-base)] rounded-[var(--radius-sm)] overflow-hidden shrink-0 group-hover:ring-2 ring-[var(--color-primary)]/30 transition-all">
-                                                    <div className="absolute inset-0 bg-gradient-to-br from-[var(--color-primary)]/20 to-[var(--color-secondary)]/20" />
-                                                    <motion.div
-                                                        className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                                                    >
+                                                    {sermon.thumbnailUrl ? (
+                                                        <img
+                                                            src={sermon.thumbnailUrl}
+                                                            alt={sermon.title}
+                                                            className="absolute inset-0 w-full h-full object-cover"
+                                                        />
+                                                    ) : (
+                                                        <div className="absolute inset-0 bg-gradient-to-br from-[var(--color-primary)]/20 to-[var(--color-secondary)]/20" />
+                                                    )}
+                                                    <motion.div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/30">
                                                         <motion.div
                                                             className="h-10 w-10 rounded-full bg-[var(--color-primary)] flex items-center justify-center"
                                                             whileHover={{ scale: 1.1 }}
@@ -315,7 +327,7 @@ export default function LibraryPage() {
                                                         </motion.div>
                                                     </motion.div>
                                                     <div className="absolute bottom-1.5 right-1.5 bg-black/60 px-1.5 py-0.5 rounded text-xs text-white font-mono">
-                                                        {sermon.duration}
+                                                        {formatDuration(sermon.duration)}
                                                     </div>
                                                 </div>
                                                 {/* Info */}
@@ -326,29 +338,38 @@ export default function LibraryPage() {
                                                                 {sermon.title}
                                                             </h3>
                                                             <p className="text-sm text-[var(--color-text-muted)]">
-                                                                {sermon.series} • {sermon.speaker}
+                                                                {sermon.series || "No series"} • {sermon.speaker || "Unknown"}
                                                             </p>
                                                         </div>
                                                         <Badge
-                                                            variant={sermon.status === "ready" ? "success" : "processing"}
+                                                            variant={
+                                                                sermon.status === "ready"
+                                                                    ? "success"
+                                                                    : sermon.status === "processing"
+                                                                        ? "processing"
+                                                                        : sermon.status === "failed"
+                                                                            ? "destructive"
+                                                                            : "secondary"
+                                                            }
                                                         >
-                                                            {sermon.status === "ready" ? "Ready" : "Processing"}
+                                                            {sermon.status === "ready"
+                                                                ? "Ready"
+                                                                : sermon.status === "processing"
+                                                                    ? "Processing"
+                                                                    : sermon.status === "uploading"
+                                                                        ? "Uploading"
+                                                                        : "Failed"}
                                                         </Badge>
                                                     </div>
                                                     <div className="flex items-center gap-6 mt-3 text-sm text-[var(--color-text-muted)]">
                                                         <span className="flex items-center gap-1.5">
                                                             <Calendar className="h-3.5 w-3.5" />
-                                                            {sermon.date}
+                                                            {formatDate(sermon.createdAt)}
                                                         </span>
                                                         <span className="flex items-center gap-1.5">
                                                             <Clock className="h-3.5 w-3.5" />
-                                                            {sermon.duration}
+                                                            {formatDuration(sermon.duration)}
                                                         </span>
-                                                        {sermon.clips > 0 && (
-                                                            <span className="text-[var(--color-primary)] font-medium">
-                                                                {sermon.clips} clips generated
-                                                            </span>
-                                                        )}
                                                     </div>
                                                 </div>
                                                 {/* Actions */}
@@ -369,8 +390,8 @@ export default function LibraryPage() {
                 )}
             </AnimatePresence>
 
-            {/* Empty State */}
-            {filteredSermons.length === 0 && (
+            {/* Search Empty State */}
+            {!isLoading && sermons && sermons.length > 0 && filteredSermons.length === 0 && (
                 <motion.div
                     className="text-center py-16"
                     initial={{ opacity: 0, y: 20 }}
@@ -387,6 +408,13 @@ export default function LibraryPage() {
                     </p>
                 </motion.div>
             )}
+
+            {/* Upload Modal */}
+            <UploadSermonModal
+                open={uploadModalOpen}
+                onOpenChange={setUploadModalOpen}
+                onSuccess={handleUploadSuccess}
+            />
         </div>
     );
 }

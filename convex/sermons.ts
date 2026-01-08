@@ -6,12 +6,26 @@ export const create = mutation({
     args: {
         organizationId: v.id("organizations"),
         title: v.string(),
+        description: v.optional(v.string()),
         series: v.optional(v.string()),
         speaker: v.optional(v.string()),
         date: v.optional(v.string()),
         s3Key: v.string(),
         s3Bucket: v.string(),
+        // YouTube specific
         youtubeUrl: v.optional(v.string()),
+        youtubeVideoId: v.optional(v.string()),
+        channelName: v.optional(v.string()),
+        channelId: v.optional(v.string()),
+        publishedAt: v.optional(v.string()),
+        tags: v.optional(v.array(v.string())),
+        // Media info
+        thumbnailUrl: v.optional(v.string()),
+        duration: v.optional(v.number()),
+        viewCount: v.optional(v.string()),
+        definition: v.optional(v.string()),
+        hasTranscript: v.optional(v.boolean()),
+        // Type
         videoType: v.union(v.literal("sermon"), v.literal("podcast")),
         createdBy: v.id("members"),
     },
@@ -67,11 +81,14 @@ export const update = mutation({
     args: {
         sermonId: v.id("sermons"),
         title: v.optional(v.string()),
+        description: v.optional(v.string()),
         series: v.optional(v.string()),
         speaker: v.optional(v.string()),
         date: v.optional(v.string()),
         thumbnailUrl: v.optional(v.string()),
         duration: v.optional(v.number()),
+        channelName: v.optional(v.string()),
+        tags: v.optional(v.array(v.string())),
     },
     handler: async (ctx, args) => {
         const { sermonId, ...updates } = args;

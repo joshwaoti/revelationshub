@@ -38,14 +38,26 @@ export default defineSchema({
     sermons: defineTable({
         organizationId: v.id("organizations"),
         title: v.string(),
+        description: v.optional(v.string()),
         series: v.optional(v.string()),
         speaker: v.optional(v.string()),
         date: v.optional(v.string()),
         s3Key: v.string(),
         s3Bucket: v.string(),
+        // YouTube specific
         youtubeUrl: v.optional(v.string()),
+        youtubeVideoId: v.optional(v.string()),
+        channelName: v.optional(v.string()),
+        channelId: v.optional(v.string()),
+        publishedAt: v.optional(v.string()),
+        tags: v.optional(v.array(v.string())),
+        // Media info
         thumbnailUrl: v.optional(v.string()),
         duration: v.optional(v.number()),
+        viewCount: v.optional(v.string()),
+        definition: v.optional(v.string()), // hd or sd
+        hasTranscript: v.optional(v.boolean()),
+        // Status
         status: v.union(
             v.literal("uploading"),
             v.literal("processing"),

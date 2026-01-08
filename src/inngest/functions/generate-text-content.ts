@@ -1,7 +1,10 @@
 import { inngest } from "../client";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-// Generate text content using Gemini API (more cost-effective than Modal for non-GPU work)
+// Generate text content using Gemini API
+// This function handles two cases:
+// 1. YouTube videos: Receives transcript segments directly in event.data
+// 2. S3 uploads: Fetches existing transcript from Convex
 export const generateTextContent = inngest.createFunction(
     {
         id: "generate-text-content",
@@ -11,6 +14,7 @@ export const generateTextContent = inngest.createFunction(
     async ({ event, step }) => {
         const {
             sermonId,
+            transcriptSegments, // For YouTube: segments passed directly
             generateQuotes,
             generateCarousel,
             generateDiscussionGuide,
@@ -20,17 +24,61 @@ export const generateTextContent = inngest.createFunction(
             generateSummary,
         } = event.data;
 
-        // Step 1: Fetch transcript from Convex
-        const transcript = await step.run("fetch-transcript", async () => {
+        // Step 1: Get or save transcript
+        const transcript = await step.run("handle-transcript", async () => {
             const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL;
             if (!convexUrl) throw new Error("Convex URL not configured");
 
+            // If we have transcriptSegments (YouTube flow), save them to Convex first
+            if (transcriptSegments && transcriptSegments.length > 0) {
+                const fullText = transcriptSegments.map((s: { word: string }) => s.word).join(" ");
+
+                // Handle Convex 8192 array limit
+                const MAX_SEGMENTS = 8000;
+                const segmentsToSave = transcriptSegments.length > MAX_SEGMENTS
+                    ? transcriptSegments.slice(0, MAX_SEGMENTS)
+                    : transcriptSegments;
+
+                // Save transcript to Convex
+                await fetch(`${convexUrl}/api/mutation`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        path: "transcripts:create",
+                        args: {
+                            sermonId,
+                            segments: segmentsToSave,
+                            fullText, // Always save full text
+                        },
+                        format: "json",
+                    }),
+                });
+
+                // Also update sermon status
+                await fetch(`${convexUrl}/api/mutation`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        path: "sermons:updateStatus",
+                        args: {
+                            sermonId,
+                            status: "processing",
+                        },
+                        format: "json",
+                    }),
+                });
+
+                return { fullText, segments: transcriptSegments };
+            }
+
+            // Otherwise fetch existing transcript (S3 upload flow)
             const response = await fetch(`${convexUrl}/api/query`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     path: "transcripts:getBySermon",
                     args: { sermonId },
+                    format: "json",
                 }),
             });
 
@@ -42,6 +90,19 @@ export const generateTextContent = inngest.createFunction(
         });
 
         if (!transcript?.fullText) {
+            // Update status to error
+            const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL;
+            if (convexUrl) {
+                await fetch(`${convexUrl}/api/mutation`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        path: "sermons:updateStatus",
+                        args: { sermonId, status: "error" },
+                        format: "json",
+                    }),
+                });
+            }
             return { success: false, error: "No transcript found" };
         }
 
@@ -170,6 +231,25 @@ ${transcript.fullText.substring(0, 10000)}`;
             });
         }
 
+        // Step 8: Mark sermon as ready
+        await step.run("update-sermon-status", async () => {
+            const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL;
+            if (!convexUrl) return;
+
+            await fetch(`${convexUrl}/api/mutation`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    path: "sermons:updateStatus",
+                    args: {
+                        sermonId,
+                        status: "ready",
+                    },
+                    format: "json",
+                }),
+            });
+        });
+
         return { success: true, sermonId };
     }
 );
@@ -189,6 +269,7 @@ async function saveContent(sermonId: string, type: string, content: string) {
                 content,
                 status: "ready",
             },
+            format: "json",
         }),
     });
 }

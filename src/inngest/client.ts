@@ -1,9 +1,11 @@
 import { Inngest } from "inngest";
 
 // Create an Inngest client for RevelationsHub
+// In development, this uses the local dev server
 export const inngest = new Inngest({
     id: "revelationshub",
-    // Event schemas can be added for type safety
+    // Force dev mode for local development
+    isDev: process.env.NODE_ENV === "development" || !process.env.INNGEST_SIGNING_KEY,
 });
 
 // Event types for type safety

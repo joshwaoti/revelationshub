@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { inngest } from "@/inngest/client";
-import { getMaxClips, canUseFeature } from "@/lib/tier-limits";
 
 // Processing configuration type
 interface ProcessConfig {
@@ -47,54 +46,86 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        // TODO: Fetch subscription from Convex to validate tier
-        // For now, default to free tier limits
-        const tier = "free" as const;
+        const clipCount = config.clipCount || 5;
 
-        // Validate clip count against tier
-        const validatedClipCount = getMaxClips(tier, config.clipCount || 3);
-
-        // Validate feature access
-        const lockedFeatures: string[] = [];
-        if (config.generateDiscussionGuide && !canUseFeature(tier, "discussion_guide")) {
-            lockedFeatures.push("discussion_guide");
-        }
-        if (config.generateDevotional && !canUseFeature(tier, "devotional")) {
-            lockedFeatures.push("devotional");
-        }
-        if (config.generateBlogPost && !canUseFeature(tier, "blog")) {
-            lockedFeatures.push("blog");
-        }
-
-        if (lockedFeatures.length > 0) {
-            return NextResponse.json(
-                {
-                    error: "Feature not available on your plan",
-                    lockedFeatures,
-                    upgradeRequired: true,
+        // FLOW 1: S3 Upload - Process via Modal (WhisperX + video clips)
+        if (config.s3Key) {
+            // Send event to Inngest to start Modal processing
+            const event = await inngest.send({
+                name: "sermon/process",
+                data: {
+                    sermonId: config.sermonId,
+                    s3Key: config.s3Key,
+                    videoType: config.videoType,
+                    maxClips: clipCount,
+                    organizationId: orgId,
                 },
-                { status: 402 }
-            );
+            });
+
+            return NextResponse.json({
+                success: true,
+                flow: "s3_upload",
+                eventId: event.ids[0],
+                clipCount,
+            });
         }
 
-        // Send event to Inngest to start processing
-        const event = await inngest.send({
-            name: "sermon/process",
-            data: {
-                sermonId: config.sermonId,
-                s3Key: config.s3Key,
-                youtubeUrl: config.youtubeUrl,
-                videoType: config.videoType,
-                maxClips: validatedClipCount,
-                organizationId: orgId,
-            },
-        });
+        // FLOW 2: YouTube URL - Fetch transcript directly (no Modal needed)
+        if (config.youtubeUrl) {
+            // Step 1: Fetch transcript from YouTube
+            const transcriptResponse = await fetch(
+                `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/youtube/transcript`,
+                {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ url: config.youtubeUrl }),
+                }
+            );
 
-        return NextResponse.json({
-            success: true,
-            eventId: event.ids[0],
-            validatedClipCount,
-        });
+            let transcriptSegments: Array<{ word: string; start: number; end: number }> = [];
+            let transcriptError = null;
+
+            if (transcriptResponse.ok) {
+                const transcriptData = await transcriptResponse.json();
+                transcriptSegments = transcriptData.segments || [];
+                console.log(`Fetched ${transcriptSegments.length} transcript segments from YouTube`);
+            } else {
+                const errorData = await transcriptResponse.json();
+                transcriptError = errorData.error || "Could not fetch transcript";
+                console.warn("Could not fetch YouTube transcript:", transcriptError);
+            }
+
+            // Step 2: Trigger text generation only (no video clips for YouTube)
+            // The generate-text function will save transcript and generate content
+            const event = await inngest.send({
+                name: "sermon/generate-text",
+                data: {
+                    sermonId: config.sermonId,
+                    transcriptSegments,
+                    generateQuotes: config.generateQuotes ?? true,
+                    generateCarousel: config.generateCarousel ?? true,
+                    generateDiscussionGuide: config.generateDiscussionGuide ?? true,
+                    generateDevotional: config.generateDevotional ?? true,
+                    generateBlogPost: config.generateBlogPost ?? true,
+                    generateOutline: config.generateOutline ?? true,
+                    generateSummary: config.generateSummary ?? true,
+                },
+            });
+
+            return NextResponse.json({
+                success: true,
+                flow: "youtube_transcript",
+                eventId: event.ids[0],
+                hasTranscript: transcriptSegments.length > 0,
+                transcriptError,
+                segmentCount: transcriptSegments.length,
+            });
+        }
+
+        return NextResponse.json(
+            { error: "Invalid processing configuration" },
+            { status: 400 }
+        );
     } catch (error) {
         console.error("Process error:", error);
         return NextResponse.json(

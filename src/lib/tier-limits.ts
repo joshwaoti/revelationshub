@@ -4,8 +4,8 @@ export const TIER_LIMITS = {
     free: {
         maxClipsPerSermon: 2,
         watermark: true,
-        features: ['clips'] as const,
-        clipCredits: 2, // per month
+        features: ['clips', 'quotes'] as const, // Basic features for free users
+        clipCredits: 5, // per month - more generous for trial
     },
     plus: {
         maxClipsPerSermon: Infinity,
