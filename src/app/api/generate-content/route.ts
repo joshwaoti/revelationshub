@@ -4,7 +4,6 @@ import { inngest } from "@/inngest/client";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
-import { analytics } from "@/lib/posthog";
 
 const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
@@ -67,12 +66,8 @@ export async function POST(req: NextRequest) {
             },
         });
 
-        // Track with PostHog
-        analytics.trackContentGeneration(
-            sermon._id,
-            contentTypes || ["all"],
-            org._id
-        );
+        // Note: PostHog tracking removed - analytics.trackContentGeneration 
+        // only works client-side, not in API routes
 
         return NextResponse.json({
             success: true,

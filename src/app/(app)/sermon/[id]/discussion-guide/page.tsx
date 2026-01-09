@@ -1,20 +1,78 @@
 "use client";
 
+import { use, useState } from "react";
+import { useQuery } from "convex/react";
+import { api } from "../../../../../../convex/_generated/api";
+import { Id } from "../../../../../../convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
-import { RefreshCw, Download, Printer, Share2 } from "lucide-react";
+import { RefreshCw, Download, Printer, Share2, Loader2, MessageSquare, Sparkles, ChevronLeft } from "lucide-react";
+import Link from "next/link";
+import { useGenerateContent } from "@/hooks/use-generate-content";
 
-export default function DiscussionGuidePage() {
+export default function DiscussionGuidePage({ params }: { params: Promise<{ id: string }> }) {
+    const resolvedParams = use(params);
+    const sermonId = resolvedParams.id as Id<"sermons">;
+
+    // Fetch sermon
+    const sermon = useQuery(api.sermons.getById, { sermonId });
+
+    // Fetch generated content
+    const generatedContent = useQuery(
+        api.generatedContent.getBySermon,
+        sermon?._id ? { sermonId: sermon._id } : "skip"
+    );
+
+    const discussionGuide = generatedContent?.find(c => c.type === "discussion_guide" && c.status === "ready");
+    const isProcessing = generatedContent?.some(c => c.type === "discussion_guide" && c.status === "processing");
+
+    // Generate content hook
+    const { isGenerating, generateContent } = useGenerateContent();
+
+    const handleRegenerate = () => {
+        if (sermon?._id) {
+            generateContent(sermon._id, ["discussion_guide"]);
+        }
+    };
+
+    // Parse content
+    const parseContent = (content: string) => {
+        try {
+            return JSON.parse(content);
+        } catch {
+            return null;
+        }
+    };
+
+    // Loading state
+    if (sermon === undefined || generatedContent === undefined) {
+        return (
+            <div className="flex items-center justify-center min-h-[60vh]">
+                <Loader2 className="h-8 w-8 animate-spin text-[var(--color-primary)]" />
+            </div>
+        );
+    }
+
+    const guide = discussionGuide ? parseContent(discussionGuide.content) : null;
+
     return (
         <div className="min-h-screen bg-[var(--color-scripture-bg)]">
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-                <div>
-                    <h1 className="font-display text-xl sm:text-2xl font-bold text-[var(--color-text-light)] dark:text-[var(--color-text-light)]">
-                        Discussion Guide
-                    </h1>
-                    <p className="text-sm text-[var(--color-text-muted)]">
-                        Finding Peace in Chaos • December 15, 2024
-                    </p>
+                <div className="flex items-center gap-3">
+                    <Link href={`/sermon/${sermonId}`}>
+                        <Button variant="ghost" size="sm">
+                            <ChevronLeft className="h-4 w-4 mr-1" />
+                            Back
+                        </Button>
+                    </Link>
+                    <div>
+                        <h1 className="font-display text-xl sm:text-2xl font-bold text-[var(--color-text-light)]">
+                            Discussion Guide
+                        </h1>
+                        <p className="text-sm text-[var(--color-text-muted)]">
+                            {sermon?.title}
+                        </p>
+                    </div>
                 </div>
                 <div className="flex flex-wrap gap-2">
                     <Button variant="outline" size="sm">
@@ -32,133 +90,153 @@ export default function DiscussionGuidePage() {
                 </div>
             </div>
 
-            {/* Paper Canvas */}
-            <div className="max-w-3xl mx-auto">
-                <div className="bg-white dark:bg-[var(--color-surface)] rounded-[var(--radius-default)] shadow-lg p-6 sm:p-10 min-h-[600px] relative">
-                    {/* Regenerate Button */}
-                    <Button
-                        variant="default"
-                        size="sm"
-                        className="absolute top-3 right-3 sm:top-4 sm:right-4"
-                    >
-                        <RefreshCw className="h-4 w-4 mr-2" />
-                        Regenerate
+            {/* No content state */}
+            {!discussionGuide && !isProcessing && (
+                <div className="text-center py-16">
+                    <MessageSquare className="h-12 w-12 mx-auto text-[var(--color-text-muted)] mb-4" />
+                    <h3 className="text-lg font-semibold text-[var(--color-text-light)] mb-2">
+                        No Discussion Guide Generated Yet
+                    </h3>
+                    <p className="text-[var(--color-text-muted)] mb-6">
+                        Generate a discussion guide from your sermon transcript
+                    </p>
+                    <Button onClick={handleRegenerate} disabled={isGenerating}>
+                        {isGenerating ? (
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                            <Sparkles className="h-4 w-4 mr-2" />
+                        )}
+                        {isGenerating ? "Generating..." : "Generate Discussion Guide"}
                     </Button>
+                </div>
+            )}
 
-                    {/* Document Content */}
-                    <div className="space-y-6 sm:space-y-8 mt-8 sm:mt-0">
-                        {/* Title */}
-                        <div className="text-center border-b border-[var(--color-success)]/30 pb-6">
-                            <h2 className="font-display text-2xl sm:text-3xl font-bold text-gray-900 dark:text-[var(--color-text-light)] mb-2">
-                                Finding Peace in Chaos
-                            </h2>
-                            <p className="text-gray-600 dark:text-[var(--color-text-muted)]">
-                                Small Group Discussion Guide
-                            </p>
-                        </div>
+            {/* Processing state */}
+            {isProcessing && (
+                <div className="text-center py-16">
+                    <Loader2 className="h-12 w-12 mx-auto text-[var(--color-primary)] mb-4 animate-spin" />
+                    <h3 className="text-lg font-semibold text-[var(--color-text-light)] mb-2">
+                        Generating Discussion Guide...
+                    </h3>
+                    <p className="text-[var(--color-text-muted)]">
+                        This may take a few moments
+                    </p>
+                </div>
+            )}
 
-                        {/* Opening */}
-                        <section>
-                            <h3 className="font-display text-lg sm:text-xl font-semibold text-gray-900 dark:text-[var(--color-text-light)] mb-3 flex items-center gap-2">
-                                <span className="h-6 w-6 rounded-full bg-[var(--color-success)] text-white text-sm flex items-center justify-center shrink-0">
-                                    1
-                                </span>
-                                Opening Prayer
-                            </h3>
-                            <p className="text-gray-700 dark:text-[var(--color-text-light)] leading-relaxed italic">
-                                &quot;Lord, as we gather together, open our hearts and minds to receive
-                                Your wisdom. Help us to find peace in Your presence, even when
-                                life feels chaotic. Guide our discussion and draw us closer to
-                                You. Amen.&quot;
-                            </p>
-                        </section>
+            {/* Content */}
+            {guide && (
+                <div className="max-w-3xl mx-auto">
+                    <div className="bg-white dark:bg-[var(--color-surface)] rounded-[var(--radius-default)] shadow-lg p-6 sm:p-10 min-h-[600px] relative">
+                        {/* Regenerate Button */}
+                        <Button
+                            variant="default"
+                            size="sm"
+                            className="absolute top-3 right-3 sm:top-4 sm:right-4"
+                            onClick={handleRegenerate}
+                            disabled={isGenerating}
+                        >
+                            {isGenerating ? (
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            ) : (
+                                <RefreshCw className="h-4 w-4 mr-2" />
+                            )}
+                            Regenerate
+                        </Button>
 
-                        {/* Key Scripture */}
-                        <section>
-                            <h3 className="font-display text-lg sm:text-xl font-semibold text-gray-900 dark:text-[var(--color-text-light)] mb-3 flex items-center gap-2">
-                                <span className="h-6 w-6 rounded-full bg-[var(--color-success)] text-white text-sm flex items-center justify-center shrink-0">
-                                    2
-                                </span>
-                                Key Scripture
-                            </h3>
-                            <blockquote className="border-l-4 border-[var(--color-primary)] pl-4 py-2 bg-[var(--color-primary)]/5 rounded-r">
-                                <p className="text-gray-700 dark:text-[var(--color-text-light)] italic">
-                                    &quot;Peace I leave with you; my peace I give you. I do not give to
-                                    you as the world gives. Do not let your hearts be troubled and
-                                    do not be afraid.&quot;
-                                </p>
-                                <cite className="text-sm text-gray-500 dark:text-[var(--color-text-muted)] mt-2 block">
-                                    — John 14:27 (NIV)
-                                </cite>
-                            </blockquote>
-                        </section>
-
-                        {/* Discussion Questions */}
-                        <section>
-                            <h3 className="font-display text-lg sm:text-xl font-semibold text-gray-900 dark:text-[var(--color-text-light)] mb-4 flex items-center gap-2">
-                                <span className="h-6 w-6 rounded-full bg-[var(--color-success)] text-white text-sm flex items-center justify-center shrink-0">
-                                    3
-                                </span>
-                                Discussion Questions
-                            </h3>
-                            <ol className="space-y-3 sm:space-y-4 list-decimal list-inside text-gray-700 dark:text-[var(--color-text-light)]">
-                                <li className="leading-relaxed">
-                                    <span className="font-medium">Icebreaker:</span> What&apos;s one
-                                    thing that has felt &quot;chaotic&quot; in your life recently?
-                                </li>
-                                <li className="leading-relaxed">
-                                    Pastor Michael described peace as &quot;the eye of the storm.&quot;
-                                    What does this metaphor mean to you personally?
-                                </li>
-                                <li className="leading-relaxed">
-                                    Read John 14:27 again. How is the peace Jesus offers different
-                                    from what the world offers?
-                                </li>
-                                <li className="leading-relaxed">
-                                    What are some practical steps you can take this week to
-                                    cultivate inner peace?
-                                </li>
-                                <li className="leading-relaxed">
-                                    How can we support each other in finding peace during
-                                    difficult seasons?
-                                </li>
-                            </ol>
-                        </section>
-
-                        {/* Application */}
-                        <section>
-                            <h3 className="font-display text-lg sm:text-xl font-semibold text-gray-900 dark:text-[var(--color-text-light)] mb-3 flex items-center gap-2">
-                                <span className="h-6 w-6 rounded-full bg-[var(--color-success)] text-white text-sm flex items-center justify-center shrink-0">
-                                    4
-                                </span>
-                                Weekly Challenge
-                            </h3>
-                            <div className="bg-[var(--color-secondary)]/10 p-4 rounded-[var(--radius-default)]">
-                                <p className="text-gray-700 dark:text-[var(--color-text-light)] leading-relaxed">
-                                    This week, set aside 10 minutes each day for intentional
-                                    stillness. Turn off your phone, find a quiet space, and simply
-                                    breathe while focusing on God&apos;s presence.
+                        <div className="space-y-6 sm:space-y-8 mt-8 sm:mt-0">
+                            {/* Title */}
+                            <div className="text-center border-b border-[var(--color-success)]/30 pb-6">
+                                <h2 className="font-display text-2xl sm:text-3xl font-bold text-gray-900 dark:text-[var(--color-text-light)] mb-2">
+                                    {guide.title || sermon?.title}
+                                </h2>
+                                <p className="text-gray-600 dark:text-[var(--color-text-muted)]">
+                                    Small Group Discussion Guide
                                 </p>
                             </div>
-                        </section>
 
-                        {/* Closing */}
-                        <section>
-                            <h3 className="font-display text-lg sm:text-xl font-semibold text-gray-900 dark:text-[var(--color-text-light)] mb-3 flex items-center gap-2">
-                                <span className="h-6 w-6 rounded-full bg-[var(--color-success)] text-white text-sm flex items-center justify-center shrink-0">
-                                    5
-                                </span>
-                                Closing Prayer
-                            </h3>
-                            <p className="text-gray-700 dark:text-[var(--color-text-light)] leading-relaxed italic">
-                                &quot;Father, thank You for the gift of peace that surpasses all
-                                understanding. Help us to be peacemakers in
-                                our homes, workplaces, and communities. Amen.&quot;
-                            </p>
-                        </section>
+                            {/* Opening Prayer */}
+                            {guide.openingPrayer && (
+                                <section>
+                                    <h3 className="font-display text-lg sm:text-xl font-semibold text-gray-900 dark:text-[var(--color-text-light)] mb-3 flex items-center gap-2">
+                                        <span className="h-6 w-6 rounded-full bg-[var(--color-success)] text-white text-sm flex items-center justify-center shrink-0">1</span>
+                                        Opening Prayer
+                                    </h3>
+                                    <p className="text-gray-700 dark:text-[var(--color-text-light)] leading-relaxed italic">
+                                        &quot;{guide.openingPrayer}&quot;
+                                    </p>
+                                </section>
+                            )}
+
+                            {/* Key Scripture */}
+                            {guide.keyScripture && (
+                                <section>
+                                    <h3 className="font-display text-lg sm:text-xl font-semibold text-gray-900 dark:text-[var(--color-text-light)] mb-3 flex items-center gap-2">
+                                        <span className="h-6 w-6 rounded-full bg-[var(--color-success)] text-white text-sm flex items-center justify-center shrink-0">2</span>
+                                        Key Scripture
+                                    </h3>
+                                    <blockquote className="border-l-4 border-[var(--color-primary)] pl-4 py-2 bg-[var(--color-primary)]/5 rounded-r">
+                                        <p className="text-gray-700 dark:text-[var(--color-text-light)] italic">
+                                            &quot;{guide.keyScripture.text}&quot;
+                                        </p>
+                                        <cite className="text-sm text-gray-500 dark:text-[var(--color-text-muted)] mt-2 block">
+                                            — {guide.keyScripture.reference}
+                                        </cite>
+                                    </blockquote>
+                                </section>
+                            )}
+
+                            {/* Discussion Questions */}
+                            {guide.discussionQuestions && (
+                                <section>
+                                    <h3 className="font-display text-lg sm:text-xl font-semibold text-gray-900 dark:text-[var(--color-text-light)] mb-4 flex items-center gap-2">
+                                        <span className="h-6 w-6 rounded-full bg-[var(--color-success)] text-white text-sm flex items-center justify-center shrink-0">3</span>
+                                        Discussion Questions
+                                    </h3>
+                                    <ol className="space-y-3 sm:space-y-4 list-decimal list-inside text-gray-700 dark:text-[var(--color-text-light)]">
+                                        {guide.icebreaker && (
+                                            <li className="leading-relaxed">
+                                                <span className="font-medium">Icebreaker:</span> {guide.icebreaker}
+                                            </li>
+                                        )}
+                                        {guide.discussionQuestions.map((q: string, i: number) => (
+                                            <li key={i} className="leading-relaxed">{q}</li>
+                                        ))}
+                                    </ol>
+                                </section>
+                            )}
+
+                            {/* Weekly Challenge */}
+                            {guide.weeklyChallenge && (
+                                <section>
+                                    <h3 className="font-display text-lg sm:text-xl font-semibold text-gray-900 dark:text-[var(--color-text-light)] mb-3 flex items-center gap-2">
+                                        <span className="h-6 w-6 rounded-full bg-[var(--color-success)] text-white text-sm flex items-center justify-center shrink-0">4</span>
+                                        Weekly Challenge
+                                    </h3>
+                                    <div className="bg-[var(--color-secondary)]/10 p-4 rounded-[var(--radius-default)]">
+                                        <p className="text-gray-700 dark:text-[var(--color-text-light)] leading-relaxed">
+                                            {guide.weeklyChallenge}
+                                        </p>
+                                    </div>
+                                </section>
+                            )}
+
+                            {/* Closing Prayer */}
+                            {guide.closingPrayer && (
+                                <section>
+                                    <h3 className="font-display text-lg sm:text-xl font-semibold text-gray-900 dark:text-[var(--color-text-light)] mb-3 flex items-center gap-2">
+                                        <span className="h-6 w-6 rounded-full bg-[var(--color-success)] text-white text-sm flex items-center justify-center shrink-0">5</span>
+                                        Closing Prayer
+                                    </h3>
+                                    <p className="text-gray-700 dark:text-[var(--color-text-light)] leading-relaxed italic">
+                                        &quot;{guide.closingPrayer}&quot;
+                                    </p>
+                                </section>
+                            )}
+                        </div>
                     </div>
                 </div>
-            </div>
+            )}
         </div>
     );
 }

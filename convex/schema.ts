@@ -122,7 +122,12 @@ export default defineSchema({
             v.literal("failed")
         ),
         createdAt: v.number(),
-    }).index("by_sermon_type", ["sermonId", "type"]),
+        // Publishing fields
+        publishedAt: v.optional(v.number()),
+        slug: v.optional(v.string()),
+    })
+        .index("by_sermon_type", ["sermonId", "type"])
+        .index("by_slug", ["slug"]),
 
     // Processing jobs (for status tracking)
     jobs: defineTable({

@@ -27,6 +27,7 @@ import {
     AlertCircle,
 } from "lucide-react";
 import Link from "next/link";
+import { useGenerateContent } from "@/hooks/use-generate-content";
 
 // Animation variants
 const containerVariants = {
@@ -98,6 +99,9 @@ export default function SermonDashboardPage({ params }: { params: Promise<{ id: 
         sermon?._id ? { sermonId: sermon._id } : "skip"
     );
 
+    // Generate content hook - MUST be called before any early returns
+    const { isGenerating, generateAll } = useGenerateContent();
+
     // Loading state
     if (sermon === undefined) {
         return (
@@ -139,6 +143,12 @@ export default function SermonDashboardPage({ params }: { params: Promise<{ id: 
     const isProcessing = sermon.status === "processing" || sermon.status === "uploading";
     const readyClips = clips?.filter(c => c.status === "ready") || [];
     const processingClips = clips?.filter(c => c.status === "processing" || c.status === "pending") || [];
+
+    const handleGenerateAll = () => {
+        if (sermon?._id) {
+            generateAll(sermon._id);
+        }
+    };
 
     return (
         <motion.div
@@ -212,16 +222,25 @@ export default function SermonDashboardPage({ params }: { params: Promise<{ id: 
                         </motion.div>
                     )}
                     <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                        <Button variant="secondary" disabled={isProcessing}>
+                        <Button
+                            variant="secondary"
+                            disabled={isProcessing || isGenerating}
+                            onClick={handleGenerateAll}
+                        >
                             {isProcessing ? (
                                 <>
                                     <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
                                     Processing...
                                 </>
+                            ) : isGenerating ? (
+                                <>
+                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                    Generating...
+                                </>
                             ) : (
                                 <>
                                     <Sparkles className="h-4 w-4 mr-2" />
-                                    Generate More
+                                    Generate All Content
                                 </>
                             )}
                         </Button>

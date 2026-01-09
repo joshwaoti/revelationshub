@@ -4,6 +4,7 @@ import { ClerkProvider } from "@clerk/nextjs";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ConvexClientProvider } from "@/lib/convex";
 import { PostHogProvider } from "@/lib/posthog";
+import { Toaster } from "sonner";
 import "./globals.css";
 
 const inter = Inter({
@@ -83,6 +84,7 @@ export default function RootLayout({
                 disableTransitionOnChange
               >
                 {children}
+                <Toaster richColors position="bottom-right" />
               </ThemeProvider>
             </PostHogProvider>
           </ConvexClientProvider>

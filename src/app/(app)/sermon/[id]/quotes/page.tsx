@@ -20,6 +20,7 @@ import {
     Sparkles,
 } from "lucide-react";
 import Link from "next/link";
+import { useGenerateContent } from "@/hooks/use-generate-content";
 
 // Gradient options for quotes
 const gradientOptions = [
@@ -58,6 +59,15 @@ export default function ImageQuotesPage({ params }: { params: Promise<{ id: stri
     const [selectedStyle, setSelectedStyle] = useState("gradient");
     const [selectedGradient, setSelectedGradient] = useState("rose");
     const [customText, setCustomText] = useState("");
+
+    // Generate content hook
+    const { isGenerating, generateContent } = useGenerateContent();
+
+    const handleRegenerate = () => {
+        if (sermon?._id) {
+            generateContent(sermon._id, ["quotes"]);
+        }
+    };
 
     // Loading state
     if (sermon === undefined || generatedContent === undefined) {
@@ -139,9 +149,13 @@ export default function ImageQuotesPage({ params }: { params: Promise<{ id: stri
                     </div>
                 </div>
                 <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                    <Button variant="ghost" size="sm">
-                        <RefreshCw className="h-4 w-4 mr-2" />
-                        Generate New
+                    <Button variant="ghost" size="sm" onClick={handleRegenerate} disabled={isGenerating}>
+                        {isGenerating ? (
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                            <RefreshCw className="h-4 w-4 mr-2" />
+                        )}
+                        {isGenerating ? "Generating..." : "Generate New"}
                     </Button>
                 </motion.div>
             </motion.div>
@@ -156,9 +170,13 @@ export default function ImageQuotesPage({ params }: { params: Promise<{ id: stri
                     <p className="text-[var(--color-text-muted)] mb-6">
                         Generate quotes from your sermon transcript
                     </p>
-                    <Button>
-                        <Sparkles className="h-4 w-4 mr-2" />
-                        Generate Quotes
+                    <Button onClick={handleRegenerate} disabled={isGenerating}>
+                        {isGenerating ? (
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                            <Sparkles className="h-4 w-4 mr-2" />
+                        )}
+                        {isGenerating ? "Generating..." : "Generate Quotes"}
                     </Button>
                 </div>
             )}
@@ -196,8 +214,8 @@ export default function ImageQuotesPage({ params }: { params: Promise<{ id: stri
                                                 setCustomText(parseQuoteContent(quote.content));
                                             }}
                                             className={`w-full text-left p-3 rounded-[var(--radius-default)] transition-all text-sm ${selectedQuoteIndex === index
-                                                    ? "bg-[var(--color-primary)]/20 border border-[var(--color-primary)]"
-                                                    : "bg-[var(--color-surface)] hover:bg-[var(--color-primary)]/10"
+                                                ? "bg-[var(--color-primary)]/20 border border-[var(--color-primary)]"
+                                                : "bg-[var(--color-surface)] hover:bg-[var(--color-primary)]/10"
                                                 }`}
                                             initial={{ opacity: 0, x: -20 }}
                                             animate={{ opacity: 1, x: 0 }}
@@ -247,20 +265,20 @@ export default function ImageQuotesPage({ params }: { params: Promise<{ id: stri
                                             key={style.id}
                                             onClick={() => setSelectedStyle(style.id)}
                                             className={`p-3 rounded-[var(--radius-default)] border-2 transition-all ${selectedStyle === style.id
-                                                    ? "border-[var(--color-primary)]"
-                                                    : "border-transparent hover:border-[var(--color-border)]"
+                                                ? "border-[var(--color-primary)]"
+                                                : "border-transparent hover:border-[var(--color-border)]"
                                                 }`}
                                             whileHover={{ scale: 1.02 }}
                                             whileTap={{ scale: 0.98 }}
                                         >
                                             <div
                                                 className={`h-12 rounded-[var(--radius-sm)] mb-2 ${style.type === "gradient"
-                                                        ? `bg-gradient-to-br ${gradientOptions.find(g => g.id === selectedGradient)?.bg}`
-                                                        : style.type === "minimal"
-                                                            ? "bg-white border border-gray-200"
-                                                            : style.type === "bold"
-                                                                ? "bg-gray-900"
-                                                                : "bg-gradient-to-br from-gray-50 to-gray-100 border border-gray-100"
+                                                    ? `bg-gradient-to-br ${gradientOptions.find(g => g.id === selectedGradient)?.bg}`
+                                                    : style.type === "minimal"
+                                                        ? "bg-white border border-gray-200"
+                                                        : style.type === "bold"
+                                                            ? "bg-gray-900"
+                                                            : "bg-gradient-to-br from-gray-50 to-gray-100 border border-gray-100"
                                                     }`}
                                             />
                                             <span className="text-xs text-[var(--color-text-muted)]">
@@ -282,8 +300,8 @@ export default function ImageQuotesPage({ params }: { params: Promise<{ id: stri
                                                     key={gradient.id}
                                                     onClick={() => setSelectedGradient(gradient.id)}
                                                     className={`w-8 h-8 rounded-full bg-gradient-to-br ${gradient.bg} ${selectedGradient === gradient.id
-                                                            ? "ring-2 ring-offset-2 ring-[var(--color-primary)]"
-                                                            : ""
+                                                        ? "ring-2 ring-offset-2 ring-[var(--color-primary)]"
+                                                        : ""
                                                         }`}
                                                     title={gradient.name}
                                                 />
