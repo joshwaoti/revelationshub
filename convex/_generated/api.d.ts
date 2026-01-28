@@ -16,6 +16,7 @@ import type * as organizations from "../organizations.js";
 import type * as sermons from "../sermons.js";
 import type * as subscriptions from "../subscriptions.js";
 import type * as transcripts from "../transcripts.js";
+import type * as viralMoments from "../viralMoments.js";
 
 import type {
   ApiFromModules,
@@ -32,6 +33,7 @@ declare const fullApi: ApiFromModules<{
   sermons: typeof sermons;
   subscriptions: typeof subscriptions;
   transcripts: typeof transcripts;
+  viralMoments: typeof viralMoments;
 }>;
 
 /**

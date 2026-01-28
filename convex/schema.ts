@@ -117,6 +117,19 @@ export default defineSchema({
         createdAt: v.number(),
     }).index("by_sermon", ["sermonId"]),
 
+    // Viral moments identified during initial processing
+    // These are ALL the moments identified by AI, not just the ones turned into clips
+    // Allows regenerating clips from unused moments without re-analyzing
+    viralMoments: defineTable({
+        sermonId: v.id("sermons"),
+        startTime: v.number(),
+        endTime: v.number(),
+        // Track if this moment has been used to create a clip
+        used: v.boolean(),
+        createdAt: v.number(),
+    }).index("by_sermon", ["sermonId"])
+        .index("by_sermon_unused", ["sermonId", "used"]),
+
     // Generated content (quotes, devotionals, blog, etc.)
     generatedContent: defineTable({
         sermonId: v.id("sermons"),

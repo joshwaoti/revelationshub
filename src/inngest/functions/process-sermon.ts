@@ -64,6 +64,9 @@ export const processSermon = inngest.createFunction(
                 clips_created: number;
                 transcript_segments: Array<{ start: number; end: number; word: string }>;
                 clip_moments: Array<{ start: number; end: number; s3_key: string }>;
+                // All moments identified by AI (for regeneration)
+                all_identified_moments?: Array<{ start: number; end: number }>;
+                processed_indices?: number[];
             };
         });
 
@@ -149,6 +152,50 @@ export const processSermon = inngest.createFunction(
             } else {
                 const result = await response.json();
                 console.log("Clips saved successfully:", result);
+            }
+        });
+
+        // Step 3.5: Save all identified viral moments (for future regeneration)
+        await step.run("save-viral-moments", async () => {
+            const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL;
+            if (!convexUrl) throw new Error("Convex URL not configured");
+
+            const allMoments = modalResult.all_identified_moments || [];
+            if (allMoments.length === 0) {
+                console.log("No viral moments to save");
+                return;
+            }
+
+            console.log(`Saving ${allMoments.length} viral moments (for regeneration)`);
+
+            // Determine which indices were processed into clips
+            const processedIndices = modalResult.processed_indices ||
+                Array.from({ length: modalResult.clip_moments?.length || 0 }, (_, i) => i);
+
+            const response = await fetch(`${convexUrl}/api/mutation`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    path: "viralMoments:saveBatch",
+                    args: {
+                        sermonId,
+                        moments: allMoments.map(m => ({
+                            startTime: m.start,
+                            endTime: m.end,
+                        })),
+                        usedIndices: processedIndices,
+                    },
+                    format: "json",
+                }),
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error("Failed to save viral moments:", errorText);
+                // Don't throw - this is not critical, processing can continue
+            } else {
+                const result = await response.json();
+                console.log("Viral moments saved successfully:", result);
             }
         });
 

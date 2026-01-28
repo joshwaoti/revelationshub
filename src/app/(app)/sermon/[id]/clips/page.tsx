@@ -14,8 +14,10 @@ import {
     RefreshCw,
     Loader2,
     ChevronLeft,
+    Wand2,
 } from "lucide-react";
 import Link from "next/link";
+import { RegenerateClipsModal } from "@/components/regenerate-clips-modal";
 
 // Format duration
 function formatDuration(seconds: number): string {
@@ -46,6 +48,12 @@ export default function ClipsPage({ params }: { params: Promise<{ id: string }> 
 
     const [selectedClipId, setSelectedClipId] = useState<string | null>(null);
 
+    // State for regenerate modal
+    const [regenerateModalOpen, setRegenerateModalOpen] = useState(false);
+
+    // State for tracking if clips are being generated
+    const [isGenerating, setIsGenerating] = useState(false);
+
     // State for signed URLs
     const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
     const [loadingUrl, setLoadingUrl] = useState(false);
@@ -57,6 +65,9 @@ export default function ClipsPage({ params }: { params: Promise<{ id: string }> 
     // Get ready clips
     const readyClips = clips?.filter(c => c.status === "ready") || [];
     const processingClips = clips?.filter(c => c.status === "processing" || c.status === "pending") || [];
+
+    // Check if any clips are being generated or processing
+    const isProcessingClips = processingClips.length > 0 || isGenerating;
 
     // Selected clip
     const selectedClip = selectedClipId
@@ -98,6 +109,24 @@ export default function ClipsPage({ params }: { params: Promise<{ id: string }> 
         setIsPlaying(false);
     }, [selectedClip?._id]);
 
+    // Track previous clip count to detect when new clips are added
+    const prevClipCountRef = useRef(clips?.length || 0);
+
+    // Reset generating state when new clips appear (either processing or ready)
+    useEffect(() => {
+        const currentCount = clips?.length || 0;
+
+        // If clips count increased, or if processing clips appeared, stop "generating" state
+        // We let the UI rely on isProcessingClips (data-driven) from this point
+        if (isGenerating) {
+            if (currentCount > prevClipCountRef.current || processingClips.length > 0) {
+                setIsGenerating(false);
+            }
+        }
+
+        prevClipCountRef.current = currentCount;
+    }, [clips?.length, processingClips.length, isGenerating]);
+
     // Get signed URL for a clip
     const getClipUrl = (s3Key: string) => {
         return signedUrls[s3Key] || "";
@@ -115,6 +144,15 @@ export default function ClipsPage({ params }: { params: Promise<{ id: string }> 
         return (
             <div className="flex items-center justify-center min-h-[60vh]">
                 <Loader2 className="h-8 w-8 animate-spin text-[var(--color-primary)]" />
+            </div>
+        );
+    }
+
+    // Sermon not found
+    if (sermon === null) {
+        return (
+            <div className="flex items-center justify-center min-h-[60vh]">
+                <p className="text-[var(--color-text-muted)]">Sermon not found</p>
             </div>
         );
     }
@@ -153,9 +191,28 @@ export default function ClipsPage({ params }: { params: Promise<{ id: string }> 
                         <h3 className="text-sm font-medium text-[var(--color-text-muted)]">
                             Generated Clips
                         </h3>
-                        <Button variant="ghost" size="sm">
-                            <RefreshCw className="h-4 w-4 mr-1" />
-                            Regenerate
+                        <Button
+                            variant={isProcessingClips ? "outline" : "ghost"}
+                            size="sm"
+                            onClick={() => setRegenerateModalOpen(true)}
+                            disabled={!sermon?.s3Key || isProcessingClips}
+                            className={isProcessingClips ? "animate-pulse border-primary/50 text-primary bg-primary/10 relative overflow-hidden" : ""}
+                            title={!sermon?.s3Key ? "Video clips can only be regenerated for uploaded videos" : "Generate new clips"}
+                        >
+                            {isProcessingClips && (
+                                <div className="absolute inset-0 -translate-x-full animate-[shimmer_2s_infinite] bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+                            )}
+                            {isProcessingClips ? (
+                                <>
+                                    <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                                    Generating...
+                                </>
+                            ) : (
+                                <>
+                                    <Wand2 className="h-4 w-4 mr-1" />
+                                    Generate More
+                                </>
+                            )}
                         </Button>
                     </div>
 
@@ -312,6 +369,19 @@ export default function ClipsPage({ params }: { params: Promise<{ id: string }> 
                     )}
                 </div>
             </div>
+
+            {/* Regenerate Clips Modal */}
+            <RegenerateClipsModal
+                open={regenerateModalOpen}
+                onOpenChange={setRegenerateModalOpen}
+                sermonId={sermon._id}
+                sermonTitle={sermon.title}
+                onSuccess={() => {
+                    setIsGenerating(true);
+                    // The clips will auto-refresh via Convex's live queries
+                }}
+            />
         </div>
     );
 }
+

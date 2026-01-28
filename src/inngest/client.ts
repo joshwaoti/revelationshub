@@ -17,6 +17,7 @@ export type SermonProcessEvent = {
         youtubeUrl?: string;
         videoType: "sermon" | "podcast";
         maxClips: number;
+        captionEffect?: "none" | "pop" | "fade" | "karaoke";
         organizationId: string;
     };
 };
@@ -43,7 +44,23 @@ export type SermonGenerateImagesEvent = {
     };
 };
 
+export type SermonRegenerateClipsEvent = {
+    name: "sermon/regenerate-clips";
+    data: {
+        sermonId: string;
+        captionEffect: "none" | "pop" | "fade" | "karaoke";
+        clipCount: number;
+        locationType: "auto" | "text" | "time";
+        clipDescription?: string;
+        startTime?: number;
+        endTime?: number;
+        appendMode: boolean;
+        organizationId: string;
+    };
+};
+
 export type InngestEvents =
     | SermonProcessEvent
     | SermonGenerateTextEvent
-    | SermonGenerateImagesEvent;
+    | SermonGenerateImagesEvent
+    | SermonRegenerateClipsEvent;
