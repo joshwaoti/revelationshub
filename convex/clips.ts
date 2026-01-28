@@ -94,3 +94,46 @@ export const createBatch = mutation({
         return clipIds;
     },
 });
+
+// Update clip captions
+export const updateCaptions = mutation({
+    args: {
+        clipId: v.id("clips"),
+        captions: v.array(v.object({
+            id: v.string(),
+            startTime: v.number(),
+            endTime: v.number(),
+            word: v.string(),
+        })),
+    },
+    handler: async (ctx, args) => {
+        await ctx.db.patch(args.clipId, { captions: args.captions });
+    },
+});
+
+// Update clip caption style
+export const updateCaptionStyle = mutation({
+    args: {
+        clipId: v.id("clips"),
+        captionStyle: v.object({
+            font: v.string(),
+            fontSize: v.number(),
+            color: v.string(),
+            highlightColor: v.optional(v.string()),
+            backgroundColor: v.optional(v.string()),
+            position: v.union(v.literal("top"), v.literal("center"), v.literal("bottom")),
+            animation: v.union(v.literal("none"), v.literal("fade"), v.literal("pop"), v.literal("karaoke")),
+        }),
+    },
+    handler: async (ctx, args) => {
+        await ctx.db.patch(args.clipId, { captionStyle: args.captionStyle });
+    },
+});
+
+// Get single clip by ID
+export const getById = query({
+    args: { clipId: v.id("clips") },
+    handler: async (ctx, args) => {
+        return await ctx.db.get(args.clipId);
+    },
+});

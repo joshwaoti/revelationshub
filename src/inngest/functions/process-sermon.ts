@@ -10,7 +10,7 @@ export const processSermon = inngest.createFunction(
     },
     { event: "sermon/process" },
     async ({ event, step }) => {
-        const { sermonId, s3Key, videoType, maxClips, organizationId } = event.data;
+        const { sermonId, s3Key, videoType, maxClips, captionEffect, organizationId } = event.data;
 
         // This function only handles S3 uploads
         if (!s3Key) {
@@ -46,6 +46,7 @@ export const processSermon = inngest.createFunction(
                     s3_key: s3Key,
                     video_type: videoType,
                     max_clips: maxClips,
+                    caption_effect: captionEffect || "karaoke",
                 }),
             });
 

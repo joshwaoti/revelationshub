@@ -97,6 +97,23 @@ export default defineSchema({
             v.literal("ready"),
             v.literal("failed")
         ),
+        // Editable captions for this clip (word-level timing)
+        captions: v.optional(v.array(v.object({
+            id: v.string(),
+            startTime: v.number(), // Relative to clip start
+            endTime: v.number(),
+            word: v.string(),
+        }))),
+        // Caption styling preferences
+        captionStyle: v.optional(v.object({
+            font: v.string(),
+            fontSize: v.number(),
+            color: v.string(),
+            highlightColor: v.optional(v.string()),
+            backgroundColor: v.optional(v.string()),
+            position: v.union(v.literal("top"), v.literal("center"), v.literal("bottom")),
+            animation: v.union(v.literal("none"), v.literal("fade"), v.literal("pop"), v.literal("karaoke")),
+        })),
         createdAt: v.number(),
     }).index("by_sermon", ["sermonId"]),
 

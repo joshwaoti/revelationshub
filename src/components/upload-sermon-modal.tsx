@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { useOrganization, useUser } from "@clerk/nextjs";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
@@ -22,8 +22,13 @@ import {
     CheckCircle,
     AlertCircle,
     Play,
+    Download,
+    Clock,
 } from "lucide-react";
 import { analytics } from "@/lib/posthog";
+
+// YouTube download service URL
+const YOUTUBE_SERVICE_URL = process.env.NEXT_PUBLIC_YOUTUBE_SERVICE_URL || "http://localhost:8001";
 
 interface UploadSermonModalProps {
     open: boolean;
@@ -83,9 +88,17 @@ export function UploadSermonModal({ open, onOpenChange, onSuccess }: UploadSermo
     const [uploadProgress, setUploadProgress] = useState(0);
     const [sermonId, setSermonId] = useState<string | null>(null);
 
+    // YouTube download states
+    const [ytStartTime, setYtStartTime] = useState(0);
+    const [ytEndTime, setYtEndTime] = useState(0);
+    const [ytDownloading, setYtDownloading] = useState(false);
+    const [ytDownloadProgress, setYtDownloadProgress] = useState(0);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
     // Processing config
     const [clipCount, setClipCount] = useState(3);
     const [videoType, setVideoType] = useState<"sermon" | "podcast">("sermon");
+    const [captionEffect, setCaptionEffect] = useState<"none" | "pop" | "fade" | "karaoke">("karaoke");
 
     // Convex
     const convexOrg = useQuery(
@@ -116,12 +129,86 @@ export function UploadSermonModal({ open, onOpenChange, onSuccess }: UploadSermo
 
             const data = await response.json();
             setMetadata(data);
+            setYtEndTime(data.duration || 0);  // Set end time to video duration
             analytics.trackSermonUpload("sermon", "youtube");
         } catch (err) {
             setError(err instanceof Error ? err.message : "Failed to fetch video info");
         } finally {
             setIsLoading(false);
         }
+    };
+
+    // Download video from YouTube service
+    const downloadYouTubeVideo = async () => {
+        if (!metadata) return;
+
+        setYtDownloading(true);
+        setYtDownloadProgress(0);
+        setError(null);
+
+        try {
+            const params = new URLSearchParams({
+                url: youtubeUrl,
+                quality: "highest",  // Download best available quality
+            });
+
+            const videoDuration = metadata.duration || 0;
+            const effectiveEndTime = ytEndTime || videoDuration;
+
+            // Only pass start/end if not downloading full video
+            if (ytStartTime > 0) {
+                params.append("start", ytStartTime.toString());
+            }
+            if (effectiveEndTime < videoDuration) {
+                params.append("end", effectiveEndTime.toString());
+            }
+
+            const downloadUrl = `${YOUTUBE_SERVICE_URL}/api/youtube/download?${params}`;
+
+            const xhr = new XMLHttpRequest();
+            xhr.open("GET", downloadUrl, true);
+            xhr.responseType = "blob";
+
+            xhr.onprogress = (event) => {
+                if (event.lengthComputable) {
+                    const percent = Math.round((event.loaded / event.total) * 100);
+                    setYtDownloadProgress(percent);
+                }
+            };
+
+            xhr.onload = () => {
+                if (xhr.status === 200) {
+                    const blob = xhr.response;
+                    const downloadLink = document.createElement("a");
+                    downloadLink.href = URL.createObjectURL(blob);
+                    downloadLink.download = `${metadata.title?.slice(0, 50) || "video"}.mp4`;
+                    document.body.appendChild(downloadLink);
+                    downloadLink.click();
+                    document.body.removeChild(downloadLink);
+                    setYtDownloading(false);
+                    setYtDownloadProgress(100);
+                } else {
+                    throw new Error("Download failed");
+                }
+            };
+
+            xhr.onerror = () => {
+                setError("Download failed. Please try again.");
+                setYtDownloading(false);
+            };
+
+            xhr.send();
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Download failed");
+            setYtDownloading(false);
+        }
+    };
+
+    // Format time helper
+    const formatTime = (seconds: number): string => {
+        const mins = Math.floor(seconds / 60);
+        const secs = Math.floor(seconds % 60);
+        return `${mins}:${secs.toString().padStart(2, "0")}`;
     };
 
     // Handle file selection
@@ -231,6 +318,7 @@ export function UploadSermonModal({ open, onOpenChange, onSuccess }: UploadSermo
                     youtubeUrl: activeTab === "youtube" ? youtubeUrl : undefined,
                     videoType,
                     clipCount,
+                    captionEffect,
                     // Content generation flags
                     generateQuotes: true,
                     generateCarousel: true,
@@ -287,7 +375,7 @@ export function UploadSermonModal({ open, onOpenChange, onSuccess }: UploadSermo
 
     return (
         <Dialog open={open} onOpenChange={handleClose}>
-            <DialogContent className="sm:max-w-lg">
+            <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                         <Upload className="h-5 w-5 text-[var(--color-primary)]" />
@@ -408,6 +496,92 @@ export function UploadSermonModal({ open, onOpenChange, onSuccess }: UploadSermo
                                                 </span>
                                             )}
                                         </div>
+
+                                        {/* Time Range Selection */}
+                                        <div className="border-t border-[var(--color-border)] pt-3 mt-3 space-y-3">
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-2 text-sm font-medium">
+                                                    <Clock className="h-4 w-4" />
+                                                    Time Range
+                                                </div>
+                                                {ytStartTime === 0 && ytEndTime === metadata.duration && (
+                                                    <span className="text-xs bg-green-500/20 text-green-400 px-2 py-0.5 rounded">
+                                                        Full video
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <p className="text-xs text-[var(--color-text-muted)]">
+                                                Leave as default to download the entire video, or enter specific seconds to download a portion.
+                                            </p>
+                                            <div className="flex items-center gap-4">
+                                                <div className="flex-1">
+                                                    <label className="text-xs text-[var(--color-text-muted)]">Start (seconds)</label>
+                                                    <Input
+                                                        type="number"
+                                                        min={0}
+                                                        max={ytEndTime || metadata.duration}
+                                                        value={ytStartTime}
+                                                        onChange={(e) => setYtStartTime(Number(e.target.value) || 0)}
+                                                        placeholder="0"
+                                                        className="h-8"
+                                                    />
+                                                    <span className="text-xs text-[var(--color-text-muted)]">
+                                                        {formatTime(ytStartTime)}
+                                                    </span>
+                                                </div>
+                                                <span className="text-[var(--color-text-muted)] mt-3">to</span>
+                                                <div className="flex-1">
+                                                    <label className="text-xs text-[var(--color-text-muted)]">End (seconds)</label>
+                                                    <Input
+                                                        type="number"
+                                                        min={ytStartTime}
+                                                        max={metadata.duration}
+                                                        value={ytEndTime || metadata.duration}
+                                                        onChange={(e) => setYtEndTime(Number(e.target.value) || metadata.duration)}
+                                                        placeholder={String(metadata.duration)}
+                                                        className="h-8"
+                                                    />
+                                                    <span className="text-xs text-[var(--color-text-muted)]">
+                                                        {formatTime(ytEndTime || metadata.duration)} / {formatTime(metadata.duration)}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <p className="text-xs text-[var(--color-text-muted)]">
+                                                Selected: {formatTime(ytStartTime)} → {formatTime(ytEndTime || metadata.duration)} ({formatTime((ytEndTime || metadata.duration) - ytStartTime)})
+                                            </p>
+                                        </div>
+
+                                        {/* Download Button */}
+                                        <Button
+                                            onClick={downloadYouTubeVideo}
+                                            disabled={ytDownloading}
+                                            className="w-full bg-gradient-to-r from-red-500 to-red-600 hover:opacity-90"
+                                        >
+                                            {ytDownloading ? (
+                                                <>
+                                                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                                    Downloading... {ytDownloadProgress}%
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Download className="h-4 w-4 mr-2" />
+                                                    Download from YouTube
+                                                </>
+                                            )}
+                                        </Button>
+
+                                        {ytDownloading && (
+                                            <div className="w-full bg-[var(--color-base)] rounded-full h-2 overflow-hidden">
+                                                <div
+                                                    className="h-full bg-gradient-to-r from-red-500 to-red-600 transition-all duration-300"
+                                                    style={{ width: `${ytDownloadProgress}%` }}
+                                                />
+                                            </div>
+                                        )}
+
+                                        <p className="text-xs text-[var(--color-text-muted)] text-center">
+                                            After downloading, go to the "Upload" tab to upload the video file.
+                                        </p>
                                     </div>
                                 )}
                             </TabsContent>
@@ -476,6 +650,21 @@ export function UploadSermonModal({ open, onOpenChange, onSuccess }: UploadSermo
                                         value={clipCount}
                                         onChange={(e) => setClipCount(Number(e.target.value))}
                                     />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-[var(--color-text-light)] mb-2">
+                                        Caption Effect
+                                    </label>
+                                    <select
+                                        className="w-full p-2 rounded-md bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-text-light)]"
+                                        value={captionEffect}
+                                        onChange={(e) => setCaptionEffect(e.target.value as "none" | "pop" | "fade" | "karaoke")}
+                                    >
+                                        <option value="karaoke">Karaoke (word-by-word highlight)</option>
+                                        <option value="pop">Pop (words scale up)</option>
+                                        <option value="fade">Fade (smooth fade-in)</option>
+                                        <option value="none">None (static text)</option>
+                                    </select>
                                 </div>
                             </div>
                         </div>

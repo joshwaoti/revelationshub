@@ -9,6 +9,7 @@ interface ProcessConfig {
     youtubeUrl?: string;
     videoType: "sermon" | "podcast";
     clipCount: number;
+    captionEffect?: "none" | "pop" | "fade" | "karaoke";
     generateQuotes: boolean;
     generateCarousel: boolean;
     generateDiscussionGuide: boolean;
@@ -58,6 +59,7 @@ export async function POST(req: NextRequest) {
                     s3Key: config.s3Key,
                     videoType: config.videoType,
                     maxClips: clipCount,
+                    captionEffect: config.captionEffect || "karaoke",
                     organizationId: orgId,
                 },
             });
