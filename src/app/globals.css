@@ -82,6 +82,7 @@
 
 html {
   scroll-behavior: smooth;
+  scroll-padding-top: 6rem;
 }
 
 body {
@@ -210,6 +211,109 @@ body {
   animation: shimmer 2s infinite;
 }
 
+/* Landing page motion utilities */
+.landing-grid {
+  background-image:
+    linear-gradient(rgba(109, 177, 191, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(109, 177, 191, 0.08) 1px, transparent 1px);
+  background-size: 56px 56px;
+  mask-image: linear-gradient(to bottom, transparent, black 18%, black 82%, transparent);
+}
+
+.hero-motion-stage {
+  --pointer-x: 50%;
+  --pointer-y: 45%;
+  --tilt-x: 0deg;
+  --tilt-y: 0deg;
+  perspective: 1600px;
+}
+
+.hero-desktop-frame {
+  transform: rotateX(var(--tilt-x)) rotateY(var(--tilt-y)) translateZ(0);
+  transform-style: preserve-3d;
+  transition: transform 150ms ease-out;
+}
+
+.hero-sheen {
+  opacity: 0;
+  background: radial-gradient(circle at var(--pointer-x) var(--pointer-y), rgba(255, 255, 255, 0.18), transparent 28%);
+  transition: opacity 150ms ease-out;
+}
+
+.hero-motion-stage:hover .hero-sheen {
+  opacity: 1;
+}
+
+.video-frame-noise {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 18px 18px;
+  opacity: 0.42;
+}
+
+.neon-card {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+
+.neon-card::before {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  z-index: -1;
+  border-radius: inherit;
+  background: conic-gradient(from var(--neon-angle, 0deg),
+      transparent 0deg,
+      var(--color-primary) 70deg,
+      var(--color-secondary) 140deg,
+      transparent 220deg,
+      var(--color-primary) 290deg,
+      transparent 360deg);
+  opacity: 0;
+  transition: opacity 180ms ease-out;
+  animation: neonTrace 1.8s linear infinite;
+}
+
+.neon-card::after {
+  content: "";
+  position: absolute;
+  inset: 1px;
+  z-index: -1;
+  border-radius: inherit;
+  background: var(--color-surface);
+}
+
+.neon-card:hover::before,
+.neon-card:focus-within::before,
+.neon-card:active::before {
+  opacity: 1;
+}
+
+@property --neon-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
+@keyframes neonTrace {
+  to {
+    --neon-angle: 360deg;
+  }
+}
+
+@keyframes footerDrift {
+  0%,
+  100% {
+    transform: translate3d(-1.2%, 0, 0);
+  }
+
+  50% {
+    transform: translate3d(1.2%, -2%, 0);
+  }
+}
+
 /* Reduced motion support */
 @media (prefers-reduced-motion: reduce) {
 
@@ -219,6 +323,18 @@ body {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+
+  html {
+    scroll-behavior: auto;
+  }
+
+  .hero-desktop-frame {
+    transform: none;
+  }
+
+  .hero-sheen {
+    display: none;
   }
 }
 

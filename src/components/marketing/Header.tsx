@@ -6,6 +6,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { Menu, X } from "lucide-react";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
+import { LogoLockup } from "@/components/brand/RevelationsLogo";
 
 export function Header() {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -36,43 +37,38 @@ export function Header() {
                 )}
             >
                 <div className="flex items-center justify-between">
-                    {/* Logo */}
                     <Link href="/" className="flex items-center gap-2">
-                        <div
-                            className={cn(
-                                "rounded-lg bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-secondary)] transition-all duration-300",
-                                scrolled ? "h-7 w-7" : "h-8 w-8"
-                            )}
+                        <LogoLockup
+                            markClassName={cn("transition-all duration-300", scrolled ? "h-7 w-7" : "h-8 w-8")}
+                            textClassName={cn("transition-all duration-300", scrolled ? "text-lg" : "text-xl")}
                         />
-                        <span
-                            className={cn(
-                                "font-display font-bold text-[var(--color-text-light)] transition-all duration-300",
-                                scrolled ? "text-lg" : "text-xl"
-                            )}
-                        >
-                            RevelationsHub
-                        </span>
                     </Link>
 
                     {/* Desktop Navigation */}
                     <div className="hidden md:flex items-center gap-6 lg:gap-8">
                         <Link
-                            href="#features"
+                            href="#workflow"
                             className="text-[var(--color-text-light)] hover:text-[var(--color-primary)] transition-colors text-sm"
                         >
-                            Features
+                            Workflow
+                        </Link>
+                        <Link
+                            href="#tour"
+                            className="text-[var(--color-text-light)] hover:text-[var(--color-primary)] transition-colors text-sm"
+                        >
+                            Product
+                        </Link>
+                        <Link
+                            href="#captions"
+                            className="text-[var(--color-text-light)] hover:text-[var(--color-primary)] transition-colors text-sm"
+                        >
+                            Captions
                         </Link>
                         <Link
                             href="/pricing"
                             className="text-[var(--color-text-light)] hover:text-[var(--color-primary)] transition-colors text-sm"
                         >
                             Pricing
-                        </Link>
-                        <Link
-                            href="/blog"
-                            className="text-[var(--color-text-light)] hover:text-[var(--color-primary)] transition-colors text-sm"
-                        >
-                            Blog
                         </Link>
                     </div>
 
@@ -95,6 +91,8 @@ export function Header() {
                         <button
                             className="p-2 text-[var(--color-text-light)] rounded-full hover:bg-[var(--color-surface)]"
                             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                            aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
+                            aria-expanded={mobileMenuOpen}
                         >
                             {mobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
                         </button>
@@ -113,11 +111,25 @@ export function Header() {
                     >
                         <div className="flex flex-col gap-3">
                             <Link
-                                href="#features"
+                                href="#workflow"
                                 className="text-[var(--color-text-light)] hover:text-[var(--color-primary)] py-2"
                                 onClick={() => setMobileMenuOpen(false)}
                             >
-                                Features
+                                Workflow
+                            </Link>
+                            <Link
+                                href="#tour"
+                                className="text-[var(--color-text-light)] hover:text-[var(--color-primary)] py-2"
+                                onClick={() => setMobileMenuOpen(false)}
+                            >
+                                Product
+                            </Link>
+                            <Link
+                                href="#captions"
+                                className="text-[var(--color-text-light)] hover:text-[var(--color-primary)] py-2"
+                                onClick={() => setMobileMenuOpen(false)}
+                            >
+                                Captions
                             </Link>
                             <Link
                                 href="/pricing"
@@ -125,13 +137,6 @@ export function Header() {
                                 onClick={() => setMobileMenuOpen(false)}
                             >
                                 Pricing
-                            </Link>
-                            <Link
-                                href="/blog"
-                                className="text-[var(--color-text-light)] hover:text-[var(--color-primary)] py-2"
-                                onClick={() => setMobileMenuOpen(false)}
-                            >
-                                Blog
                             </Link>
                             <div className="flex flex-col gap-2 mt-2 pt-4 border-t border-[var(--color-border)]">
                                 <Link href="/sign-in" onClick={() => setMobileMenuOpen(false)}>
