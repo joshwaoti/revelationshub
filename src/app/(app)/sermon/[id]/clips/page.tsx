@@ -11,7 +11,6 @@ import {
     Download,
     Share2,
     Edit,
-    RefreshCw,
     Loader2,
     ChevronLeft,
     Wand2,
@@ -59,8 +58,6 @@ export default function ClipsPage({ params }: { params: Promise<{ id: string }> 
     const [loadingUrl, setLoadingUrl] = useState(false);
 
     const videoRef = useRef<HTMLVideoElement>(null);
-    const [currentTime, setCurrentTime] = useState(0);
-    const [isPlaying, setIsPlaying] = useState(false);
 
     // Get ready clips
     const readyClips = clips?.filter(c => c.status === "ready") || [];
@@ -103,12 +100,6 @@ export default function ClipsPage({ params }: { params: Promise<{ id: string }> 
         fetchSignedUrl();
     }, [selectedClip?.s3Key, signedUrls]);
 
-    // Reset video state when clip changes
-    useEffect(() => {
-        setCurrentTime(0);
-        setIsPlaying(false);
-    }, [selectedClip?._id]);
-
     // Track previous clip count to detect when new clips are added
     const prevClipCountRef = useRef(clips?.length || 0);
 
@@ -130,13 +121,6 @@ export default function ClipsPage({ params }: { params: Promise<{ id: string }> 
     // Get signed URL for a clip
     const getClipUrl = (s3Key: string) => {
         return signedUrls[s3Key] || "";
-    };
-
-    // Handle video time update
-    const handleTimeUpdate = () => {
-        if (videoRef.current) {
-            setCurrentTime(videoRef.current.currentTime);
-        }
     };
 
     // Loading state
@@ -293,9 +277,6 @@ export default function ClipsPage({ params }: { params: Promise<{ id: string }> 
                                                 className="w-full h-full object-contain rounded-lg bg-black"
                                                 poster={selectedClip.thumbnailUrl || undefined}
                                                 style={{ maxHeight: '100%' }}
-                                                onTimeUpdate={handleTimeUpdate}
-                                                onPlay={() => setIsPlaying(true)}
-                                                onPause={() => setIsPlaying(false)}
                                             >
                                                 <source src={getClipUrl(selectedClip.s3Key)} type="video/mp4" />
                                                 Your browser does not support the video tag.
@@ -384,4 +365,3 @@ export default function ClipsPage({ params }: { params: Promise<{ id: string }> 
         </div>
     );
 }
-

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { useRouter } from "next/navigation";
 import { useOrganization, useUser } from "@clerk/nextjs";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
@@ -11,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { ColorPicker } from "@/components/ui/color-picker";
 import { Check, Upload, Palette, Type, Loader2 } from "lucide-react";
 import Link from "next/link";
+import { LogoLockup } from "@/components/brand/RevelationsLogo";
 
 const steps = [
     { id: 1, name: "Organization", icon: Check },
@@ -19,7 +19,6 @@ const steps = [
 ];
 
 export default function OnboardingPage() {
-    const router = useRouter();
     const { organization, isLoaded: orgLoaded } = useOrganization();
     const { user } = useUser();
 
@@ -155,10 +154,7 @@ export default function OnboardingPage() {
             <div className="w-full max-w-2xl">
                 {/* Logo */}
                 <Link href="/" className="flex items-center justify-center gap-2 mb-8">
-                    <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-secondary)]" />
-                    <span className="font-display text-2xl font-bold text-[var(--color-text-light)]">
-                        RevelationsHub
-                    </span>
+                    <LogoLockup markClassName="h-10 w-10" textClassName="text-2xl" />
                 </Link>
 
                 {/* Progress Steps */}

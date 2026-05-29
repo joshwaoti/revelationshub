@@ -1,4 +1,4 @@
-"use client";
+"use client";
 
 import { use, useState } from "react";
 import { useQuery, useMutation } from "convex/react";
@@ -8,24 +8,23 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import {
-    RefreshCw,
-    Copy,
-    FileEdit,
-    ExternalLink,
-    Loader2,
-    Sparkles,
-    ChevronLeft,
-    FileText,
-    Check,
-    X,
-    Edit,
-    Save,
-    Share2,
-} from "lucide-react";
-import Link from "next/link";
-import { useGenerateContent } from "@/hooks/use-generate-content";
 import { toast } from "sonner";
+import { useGenerateContent } from "@/hooks/use-generate-content";
+import Link from "next/link";
+import {
+    ChevronLeft,
+    Loader2,
+    X,
+    Save,
+    Edit,
+    Copy,
+    Share2,
+    ExternalLink,
+    FileText,
+    Sparkles,
+    RefreshCw,
+    FileEdit
+} from "lucide-react";
 
 interface BlogData {
     title: string;
@@ -61,14 +60,14 @@ export default function BlogPostPage({ params }: { params: Promise<{ id: string 
     // Fetch sermon
     const sermon = useQuery(api.sermons.getById, { sermonId });
 
-    // Fetch generated content
-    const generatedContent = useQuery(
-        api.generatedContent.getBySermon,
-        sermon?._id ? { sermonId: sermon._id } : "skip"
+    // Fetch only blog post content for this page.
+    const blogPostContent = useQuery(
+        api.generatedContent.getBySermonAndType,
+        sermon?._id ? { sermonId: sermon._id, type: "blog_post" } : "skip"
     );
 
-    const blogPost = generatedContent?.find(c => c.type === "blog_post" && c.status === "ready");
-    const isProcessing = generatedContent?.some(c => c.type === "blog_post" && c.status === "processing");
+    const blogPost = blogPostContent?.find(c => c.status === "ready");
+    const isProcessing = blogPostContent?.some(c => c.status === "processing");
 
     // Mutations
     const updateContent = useMutation(api.generatedContent.updateContent);
@@ -215,7 +214,7 @@ export default function BlogPostPage({ params }: { params: Promise<{ id: string 
     };
 
     // Loading state
-    if (sermon === undefined || generatedContent === undefined) {
+    if (sermon === undefined || blogPostContent === undefined) {
         return (
             <div className="flex items-center justify-center min-h-[60vh]">
                 <Loader2 className="h-8 w-8 animate-spin text-[var(--color-primary)]" />

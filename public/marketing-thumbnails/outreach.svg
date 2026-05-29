@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 675" role="img" aria-labelledby="title desc">
+  <title id="title">African outreach ministry content</title>
+  <desc id="desc">Illustrative thumbnail of Black church volunteers recording outreach content on mobile devices.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1"><stop offset="0" stop-color="#ffeaec"/><stop offset=".52" stop-color="#6db1bf"/><stop offset="1" stop-color="#301a4b"/></linearGradient>
+  </defs>
+  <rect width="1200" height="675" fill="url(#bg)"/>
+  <path d="M0 490c190-82 354-88 522-27 211 77 417 64 678-62v274H0z" fill="#12081f" opacity=".78"/>
+  <rect x="826" y="150" width="172" height="286" rx="34" fill="#12081f"/>
+  <rect x="846" y="178" width="132" height="230" rx="20" fill="#ffeaec"/>
+  <circle cx="912" cy="293" r="54" fill="#4e2b1d"/>
+  <path d="M846 384c38-70 96-72 132 0v24H846z" fill="#f39a9d"/>
+  <g>
+    <circle cx="278" cy="308" r="58" fill="#2e1b14"/><path d="M198 392c48-82 127-84 174 0v150H198z" fill="#301a4b"/>
+    <circle cx="470" cy="276" r="60" fill="#563324"/><path d="M392 360c50-78 128-80 176 0v160H392z" fill="#ffeaec"/>
+    <rect x="590" y="248" width="64" height="108" rx="14" fill="#12081f"/><rect x="602" y="264" width="40" height="76" rx="8" fill="#6db1bf"/>
+  </g>
+  <text x="70" y="112" font-family="Arial, sans-serif" font-size="52" font-weight="900" fill="#12081f">FROM SERMON</text>
+  <text x="70" y="170" font-family="Arial, sans-serif" font-size="52" font-weight="900" fill="#fff">TO OUTREACH</text>
+</svg>

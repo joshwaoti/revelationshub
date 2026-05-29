@@ -16,6 +16,10 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 
+const waveformHeights = Array.from({ length: 100 }, (_, i) =>
+    Math.max(8, Math.min(92, 36 + Math.sin(i * 0.3) * 34 + ((i * 17) % 19)))
+);
+
 export default function PodcastAudioPage() {
     const [isPlaying, setIsPlaying] = useState(false);
 
@@ -72,7 +76,7 @@ export default function PodcastAudioPage() {
                                         key={i}
                                         className="flex-1 bg-[var(--color-primary)] rounded-full"
                                         style={{
-                                            height: `${20 + Math.sin(i * 0.3) * 40 + Math.random() * 20}%`,
+                                            height: `${waveformHeights[i]}%`,
                                             opacity: i < 35 ? 1 : 0.4,
                                         }}
                                     />

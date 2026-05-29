@@ -119,6 +119,61 @@ export const getByType = query({
     },
 });
 
+// Get all generated content rows for one sermon/type.
+export const getBySermonAndType = query({
+    args: {
+        sermonId: v.id("sermons"),
+        type: v.union(
+            v.literal("quote"),
+            v.literal("quote_image"),
+            v.literal("carousel"),
+            v.literal("discussion_guide"),
+            v.literal("devotional"),
+            v.literal("sermon_outline"),
+            v.literal("blog_post"),
+            v.literal("summary")
+        ),
+    },
+    handler: async (ctx, args) => {
+        return await ctx.db
+            .query("generatedContent")
+            .withIndex("by_sermon_type", (q) =>
+                q.eq("sermonId", args.sermonId).eq("type", args.type)
+            )
+            .collect();
+    },
+});
+
+// Count content by type/status without returning large JSON payloads to the client.
+export const getCountsBySermon = query({
+    args: { sermonId: v.id("sermons") },
+    handler: async (ctx, args) => {
+        const rows = await ctx.db
+            .query("generatedContent")
+            .withIndex("by_sermon_type", (q) => q.eq("sermonId", args.sermonId))
+            .collect();
+
+        const counts = {
+            quote: 0,
+            quote_image: 0,
+            carousel: 0,
+            discussion_guide: 0,
+            devotional: 0,
+            sermon_outline: 0,
+            blog_post: 0,
+            summary: 0,
+        };
+
+        for (const row of rows) {
+            if (row.status === "ready") {
+                counts[row.type] += 1;
+            }
+        }
+
+        return counts;
+    },
+});
+
 // Update content status
 export const updateStatus = mutation({
     args: {

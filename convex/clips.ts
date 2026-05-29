@@ -37,6 +37,51 @@ export const getBySermon = query({
     },
 });
 
+// Get clip counts for a sermon without returning caption or media metadata.
+export const getCountsBySermon = query({
+    args: { sermonId: v.id("sermons") },
+    handler: async (ctx, args) => {
+        const clips = await ctx.db
+            .query("clips")
+            .withIndex("by_sermon", (q) => q.eq("sermonId", args.sermonId))
+            .collect();
+
+        return {
+            ready: clips.filter((clip) => clip.status === "ready").length,
+            processing: clips.filter((clip) => clip.status === "processing").length,
+            pending: clips.filter((clip) => clip.status === "pending").length,
+            failed: clips.filter((clip) => clip.status === "failed").length,
+            total: clips.length,
+        };
+    },
+});
+
+// Get the first few ready clips for overview pages without captions.
+export const getReadyPreviewBySermon = query({
+    args: {
+        sermonId: v.id("sermons"),
+        limit: v.optional(v.number()),
+    },
+    handler: async (ctx, args) => {
+        const limit = args.limit ?? 4;
+        const clips = await ctx.db
+            .query("clips")
+            .withIndex("by_sermon", (q) => q.eq("sermonId", args.sermonId))
+            .collect();
+
+        return clips
+            .filter((clip) => clip.status === "ready")
+            .slice(0, limit)
+            .map((clip) => ({
+                _id: clip._id,
+                title: clip.title,
+                startTime: clip.startTime,
+                endTime: clip.endTime,
+                thumbnailUrl: clip.thumbnailUrl,
+            }));
+    },
+});
+
 // Update clip status
 export const updateStatus = mutation({
     args: {
@@ -135,5 +180,16 @@ export const getById = query({
     args: { clipId: v.id("clips") },
     handler: async (ctx, args) => {
         return await ctx.db.get(args.clipId);
+    },
+});
+
+// Get single clip by S3 key for server-side ownership checks.
+export const getByS3Key = query({
+    args: { s3Key: v.string() },
+    handler: async (ctx, args) => {
+        return await ctx.db
+            .query("clips")
+            .filter((q) => q.eq(q.field("s3Key"), args.s3Key))
+            .first();
     },
 });

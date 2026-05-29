@@ -29,14 +29,14 @@ export default function SummariesPage({ params }: { params: Promise<{ id: string
     // Fetch sermon
     const sermon = useQuery(api.sermons.getById, { sermonId });
 
-    // Fetch generated content
-    const generatedContent = useQuery(
-        api.generatedContent.getBySermon,
-        sermon?._id ? { sermonId: sermon._id } : "skip"
+    // Fetch only summary content for this page.
+    const summaryContent = useQuery(
+        api.generatedContent.getBySermonAndType,
+        sermon?._id ? { sermonId: sermon._id, type: "summary" } : "skip"
     );
 
-    const summary = generatedContent?.find(c => c.type === "summary" && c.status === "ready");
-    const isProcessing = generatedContent?.some(c => c.type === "summary" && c.status === "processing");
+    const summary = summaryContent?.find(c => c.status === "ready");
+    const isProcessing = summaryContent?.some(c => c.status === "processing");
 
     // Generate content hook
     const { isGenerating, generateContent } = useGenerateContent();
@@ -62,7 +62,7 @@ export default function SummariesPage({ params }: { params: Promise<{ id: string
     };
 
     // Loading state
-    if (sermon === undefined || generatedContent === undefined) {
+    if (sermon === undefined || summaryContent === undefined) {
         return (
             <div className="flex items-center justify-center min-h-[60vh]">
                 <Loader2 className="h-8 w-8 animate-spin text-[var(--color-primary)]" />

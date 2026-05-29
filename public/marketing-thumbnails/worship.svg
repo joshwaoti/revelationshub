@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 675" role="img" aria-labelledby="title desc">
+  <title id="title">African worship service clip</title>
+  <desc id="desc">Illustrative thumbnail of Black worshippers with raised hands and colorful sanctuary lighting.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#301a4b"/><stop offset=".55" stop-color="#12081f"/><stop offset="1" stop-color="#05030a"/></linearGradient>
+    <radialGradient id="beam" cx="50%" cy="0" r="90%"><stop offset="0" stop-color="#ffeaec" stop-opacity=".55"/><stop offset=".45" stop-color="#6db1bf" stop-opacity=".18"/><stop offset="1" stop-color="#12081f" stop-opacity="0"/></radialGradient>
+  </defs>
+  <rect width="1200" height="675" fill="url(#bg)"/>
+  <rect width="1200" height="675" fill="url(#beam)"/>
+  <g opacity=".92">
+    <path d="M162 550c14-120 71-153 114 0z" fill="#6db1bf"/><circle cx="219" cy="392" r="42" fill="#4e2b1d"/><rect x="147" y="350" width="22" height="170" rx="11" transform="rotate(-27 147 350)" fill="#4e2b1d"/>
+    <path d="M404 568c20-148 92-189 145 0z" fill="#f39a9d"/><circle cx="477" cy="362" r="52" fill="#2e1b14"/><rect x="540" y="282" width="24" height="195" rx="12" transform="rotate(31 540 282)" fill="#2e1b14"/>
+    <path d="M674 556c18-135 86-172 136 0z" fill="#3f6c51"/><circle cx="742" cy="374" r="48" fill="#563324"/><rect x="650" y="294" width="24" height="190" rx="12" transform="rotate(-35 650 294)" fill="#563324"/>
+    <path d="M930 548c13-115 68-146 110 0z" fill="#ffeaec"/><circle cx="985" cy="398" r="39" fill="#3a2118"/><rect x="1027" y="342" width="21" height="150" rx="10" transform="rotate(30 1027 342)" fill="#3a2118"/>
+  </g>
+  <text x="70" y="116" font-family="Arial, sans-serif" font-size="54" font-weight="900" fill="#fff">SUNDAY</text>
+  <text x="70" y="176" font-family="Arial, sans-serif" font-size="54" font-weight="900" fill="#f39a9d">IN MOTION</text>
+</svg>

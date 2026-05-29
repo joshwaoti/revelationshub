@@ -13,7 +13,7 @@ const s3Client = new S3Client({
 
 export async function GET(req: NextRequest) {
     try {
-        const { userId } = await auth();
+        const { userId, orgId } = await auth();
         if (!userId) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
@@ -25,6 +25,16 @@ export async function GET(req: NextRequest) {
             return NextResponse.json({ error: "S3 key is required" }, { status: 400 });
         }
 
+        const allowedPrefixes = [
+            orgId ? `sermons/${orgId}/` : null,
+            orgId ? `exports/${orgId}/` : null,
+            `exports/${userId}/`,
+        ].filter(Boolean) as string[];
+
+        if (!allowedPrefixes.some((prefix) => s3Key.startsWith(prefix))) {
+            return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+        }
+
         const bucket = process.env.AWS_S3_BUCKET || "josh-video-clipper";
 
         const command = new GetObjectCommand({
@@ -32,8 +42,8 @@ export async function GET(req: NextRequest) {
             Key: s3Key,
         });
 
-        // Generate a pre-signed URL that expires in 1 hour
-        const signedUrl = await getSignedUrl(s3Client, command, { expiresIn: 3600 });
+        // Generate a pre-signed URL that expires in 15 minutes
+        const signedUrl = await getSignedUrl(s3Client, command, { expiresIn: 900 });
 
         return NextResponse.json({ url: signedUrl });
     } catch (error) {

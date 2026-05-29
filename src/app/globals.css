@@ -4,6 +4,10 @@
 
 /* Light Theme (Scripture Mode) */
 :root {
+  --font-inter: 'Inter', sans-serif;
+  --font-outfit: 'Outfit', sans-serif;
+  --font-jetbrains-mono: 'JetBrains Mono', monospace;
+
   --color-base: #ffeaec;
   --color-surface: #ffffff;
   --color-primary: #6db1bf;
@@ -398,3 +402,98 @@ body {
     padding-right: 2rem;
   }
 }
+
+/* Premium design system extensions */
+
+/* 1. Grain texture overlay */
+.grain-overlay {
+  position: relative;
+}
+.grain-overlay::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0.035;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+  z-index: 1;
+}
+
+/* 2. Glassmorphism improvements */
+.premium-glass {
+  background: rgba(35, 18, 56, 0.45);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(109, 177, 191, 0.15);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+}
+
+.light .premium-glass {
+  background: rgba(255, 234, 236, 0.45);
+  border: 1px solid rgba(48, 26, 75, 0.08);
+  box-shadow: 0 8px 32px 0 rgba(48, 26, 75, 0.05);
+}
+
+/* 3. Animated gradient border card */
+.gradient-border-card {
+  position: relative;
+  background: var(--color-surface);
+  border-radius: var(--radius-md);
+  padding: 1px;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.gradient-border-card::before {
+  content: '';
+  position: absolute;
+  top: 0; right: 0; bottom: 0; left: 0;
+  z-index: 0;
+  background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
+  transition: opacity 0.3s ease;
+  opacity: 0.3;
+}
+
+.gradient-border-card:hover::before {
+  opacity: 1;
+}
+
+.gradient-border-card-inner {
+  position: relative;
+  z-index: 1;
+  background: var(--color-surface);
+  border-radius: calc(var(--radius-md) - 1px);
+  height: 100%;
+  width: 100%;
+}
+
+/* 4. Section divider gradients */
+.section-divider-top {
+  position: relative;
+}
+.section-divider-top::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 120px;
+  background: linear-gradient(to bottom, var(--color-base), transparent);
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* 5. Smooth section separators (clip-path) */
+.slanted-divider {
+  clip-path: polygon(0 0, 100% 4%, 100% 100%, 0 96%);
+}
+
+/* 6. Counter animation styles */
+.counter-text {
+  background: linear-gradient(135deg, var(--color-text-light) 30%, var(--color-primary) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+

@@ -1,5 +1,5 @@
 import { inngest } from "../client";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { generateText } from "@/lib/server/llm";
 
 // Generate text content using Gemini API
 // This function handles two cases:
@@ -104,21 +104,13 @@ export const generateTextContent = inngest.createFunction(
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
                         path: "sermons:updateStatus",
-                        args: { sermonId, status: "error" },
+                        args: { sermonId, status: "failed" },
                         format: "json",
                     }),
                 });
             }
             return { success: false, error: "No transcript found" };
         }
-
-        const geminiApiKey = process.env.GEMINI_API_KEY;
-        if (!geminiApiKey) {
-            throw new Error("Gemini API key not configured");
-        }
-
-        const genAI = new GoogleGenerativeAI(geminiApiKey);
-        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
         // Step 2: Generate quotes
         if (generateQuotes) {
@@ -178,10 +170,9 @@ Return ONLY valid JSON, no additional text.
 TRANSCRIPT:
 ${transcript.fullText}`;
 
-                console.log(`[generate-quotes] Calling Gemini API...`);
-                const result = await model.generateContent(prompt);
-                const responseText = result.response.text();
-                console.log(`[generate-quotes] Gemini response length: ${responseText.length} chars`);
+                console.log(`[generate-quotes] Calling LLM provider...`);
+                const responseText = await generateText(prompt, { task: "generate-quotes" });
+                console.log(`[generate-quotes] LLM response length: ${responseText.length} chars`);
                 console.log(`[generate-quotes] Response preview: ${responseText.substring(0, 200)}`);
 
                 // Parse the response to save each quote separately
@@ -269,8 +260,8 @@ Return ONLY valid JSON.
 TRANSCRIPT:
 ${transcript.fullText}`;
 
-                const result = await model.generateContent(prompt);
-                await saveContent(sermonId, "carousel", result.response.text());
+                const responseText = await generateText(prompt, { task: "generate-carousel" });
+                await saveContent(sermonId, "carousel", responseText);
             });
         }
 
@@ -319,8 +310,8 @@ Return ONLY valid JSON.
 TRANSCRIPT:
 ${transcript.fullText}`;
 
-                const result = await model.generateContent(prompt);
-                await saveContent(sermonId, "discussion_guide", result.response.text());
+                const responseText = await generateText(prompt, { task: "generate-discussion-guide" });
+                await saveContent(sermonId, "discussion_guide", responseText);
             });
         }
 
@@ -366,8 +357,8 @@ Return ONLY valid JSON.
 TRANSCRIPT:
 ${transcript.fullText}`;
 
-                const result = await model.generateContent(prompt);
-                await saveContent(sermonId, "devotional", result.response.text());
+                const responseText = await generateText(prompt, { task: "generate-devotional" });
+                await saveContent(sermonId, "devotional", responseText);
             });
         }
 
@@ -418,8 +409,8 @@ Return ONLY valid JSON.
 TRANSCRIPT:
 ${transcript.fullText}`;
 
-                const result = await model.generateContent(prompt);
-                await saveContent(sermonId, "blog_post", result.response.text());
+                const responseText = await generateText(prompt, { task: "generate-blog-post" });
+                await saveContent(sermonId, "blog_post", responseText);
             });
         }
 
@@ -468,8 +459,8 @@ Return ONLY valid JSON.
 TRANSCRIPT:
 ${transcript.fullText}`;
 
-                const result = await model.generateContent(prompt);
-                await saveContent(sermonId, "sermon_outline", result.response.text());
+                const responseText = await generateText(prompt, { task: "generate-outline" });
+                await saveContent(sermonId, "sermon_outline", responseText);
             });
         }
 
@@ -517,8 +508,8 @@ Return ONLY valid JSON.
 TRANSCRIPT:
 ${transcript.fullText}`;
 
-                const result = await model.generateContent(prompt);
-                await saveContent(sermonId, "summary", result.response.text());
+                const responseText = await generateText(prompt, { task: "generate-summary" });
+                await saveContent(sermonId, "summary", responseText);
             });
         }
 

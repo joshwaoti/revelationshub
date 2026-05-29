@@ -1,5 +1,6 @@
 import { SignIn } from "@clerk/nextjs";
 import Link from "next/link";
+import { LogoLockup } from "@/components/brand/RevelationsLogo";
 
 export default function SignInPage() {
     return (
@@ -11,10 +12,7 @@ export default function SignInPage() {
             <div className="relative z-10 w-full max-w-md">
                 {/* Logo */}
                 <Link href="/" className="flex items-center justify-center gap-2 mb-8">
-                    <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-secondary)]" />
-                    <span className="font-display text-2xl font-bold text-[var(--color-text-light)]">
-                        RevelationsHub
-                    </span>
+                    <LogoLockup markClassName="h-10 w-10" textClassName="text-2xl" />
                 </Link>
 
                 <SignIn

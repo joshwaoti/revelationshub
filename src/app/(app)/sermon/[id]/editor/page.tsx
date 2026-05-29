@@ -14,7 +14,6 @@ import {
     SkipBack,
     SkipForward,
     Loader2,
-    Download,
     ArrowLeft,
 } from "lucide-react";
 import { DownloadClipButton } from "@/components/DownloadClipButton";
@@ -36,6 +35,7 @@ export default function VideoEditorPage({ params }: PageProps) {
     // State
     const [isPlaying, setIsPlaying] = useState(false);
     const [currentTime, setCurrentTime] = useState(0);
+    const [duration, setDuration] = useState(0);
     const videoRef = useRef<HTMLVideoElement>(null);
 
     // Signed URL for video
@@ -75,6 +75,13 @@ export default function VideoEditorPage({ params }: PageProps) {
     const handleTimeUpdate = () => {
         if (videoRef.current) {
             setCurrentTime(videoRef.current.currentTime);
+            setDuration(videoRef.current.duration || 0);
+        }
+    };
+
+    const handleLoadedMetadata = () => {
+        if (videoRef.current) {
+            setDuration(videoRef.current.duration || 0);
         }
     };
 
@@ -158,6 +165,7 @@ export default function VideoEditorPage({ params }: PageProps) {
                             src={videoUrl || undefined}
                             className="w-full h-full object-cover"
                             onTimeUpdate={handleTimeUpdate}
+                            onLoadedMetadata={handleLoadedMetadata}
                             onPlay={() => setIsPlaying(true)}
                             onPause={() => setIsPlaying(false)}
                             onClick={togglePlay}
@@ -196,7 +204,7 @@ export default function VideoEditorPage({ params }: PageProps) {
                                 </button>
                             </div>
                             <span className="text-sm font-mono text-[var(--color-text-muted)]">
-                                {Math.floor((videoRef.current?.duration || 0) / 60)}:{Math.floor((videoRef.current?.duration || 0) % 60).toString().padStart(2, '0')}
+                                {Math.floor(duration / 60)}:{Math.floor(duration % 60).toString().padStart(2, '0')}
                             </span>
                         </div>
 
@@ -206,13 +214,13 @@ export default function VideoEditorPage({ params }: PageProps) {
                             onClick={(e) => {
                                 const rect = e.currentTarget.getBoundingClientRect();
                                 const percent = (e.clientX - rect.left) / rect.width;
-                                const time = percent * (videoRef.current?.duration || 0);
+                                const time = percent * duration;
                                 handleSeekTo(time);
                             }}
                         >
                             <div
                                 className="h-full bg-[var(--color-primary)] transition-all"
-                                style={{ width: `${(currentTime / (videoRef.current?.duration || 1)) * 100}%` }}
+                                style={{ width: `${(currentTime / (duration || 1)) * 100}%` }}
                             />
                         </div>
                     </div>

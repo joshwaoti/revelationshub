@@ -1,7 +1,7 @@
 "use client";
 
 import { use, useState } from "react";
-import { useQuery, useMutation } from "convex/react";
+import { useQuery } from "convex/react";
 import { api } from "../../../../../../convex/_generated/api";
 import { Id } from "../../../../../../convex/_generated/dataModel";
 import { motion, AnimatePresence } from "framer-motion";
@@ -46,14 +46,14 @@ export default function ImageQuotesPage({ params }: { params: Promise<{ id: stri
     // Fetch sermon
     const sermon = useQuery(api.sermons.getById, { sermonId });
 
-    // Fetch generated quotes
-    const generatedContent = useQuery(
-        api.generatedContent.getBySermon,
-        sermon?._id ? { sermonId: sermon._id } : "skip"
+    // Fetch only quote content for this page.
+    const quoteContent = useQuery(
+        api.generatedContent.getBySermonAndType,
+        sermon?._id ? { sermonId: sermon._id, type: "quote" } : "skip"
     );
 
-    const quotes = generatedContent?.filter(c => c.type === "quote" && c.status === "ready") || [];
-    const processingQuotes = generatedContent?.filter(c => c.type === "quote" && c.status === "processing") || [];
+    const quotes = quoteContent?.filter(c => c.status === "ready") || [];
+    const processingQuotes = quoteContent?.filter(c => c.status === "processing") || [];
 
     const [selectedQuoteIndex, setSelectedQuoteIndex] = useState(0);
     const [selectedStyle, setSelectedStyle] = useState("gradient");
@@ -70,7 +70,7 @@ export default function ImageQuotesPage({ params }: { params: Promise<{ id: stri
     };
 
     // Loading state
-    if (sermon === undefined || generatedContent === undefined) {
+    if (sermon === undefined || quoteContent === undefined) {
         return (
             <div className="flex items-center justify-center min-h-[60vh]">
                 <Loader2 className="h-8 w-8 animate-spin text-[var(--color-primary)]" />

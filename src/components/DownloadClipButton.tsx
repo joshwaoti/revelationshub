@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Download, Loader2, Check, ExternalLink } from "lucide-react";
+import { Download, Loader2, Check } from "lucide-react";
 import { toast } from "sonner";
 
 interface DownloadClipButtonProps {

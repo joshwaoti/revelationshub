@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
 import { Library, Settings, Palette } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { LogoMark } from "@/components/brand/RevelationsLogo";
 
 const navItems = [
     { href: "/library", icon: Library, label: "Library" },
@@ -17,23 +18,24 @@ export function GlobalSidebar() {
 
     return (
         <motion.aside
-            className="fixed left-0 top-0 bottom-0 w-16 bg-[var(--color-base)] border-r border-[var(--color-border)] flex flex-col items-center py-4 z-40"
+            className="fixed inset-x-0 bottom-0 z-40 flex h-16 items-center justify-around border-t border-[var(--color-border)] bg-[var(--color-base)] px-3 sm:inset-y-0 sm:left-0 sm:right-auto sm:h-auto sm:w-16 sm:flex-col sm:justify-start sm:border-r sm:border-t-0 sm:px-0 sm:py-4"
             initial={{ x: -20, opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
             transition={{ duration: 0.3 }}
         >
             {/* Logo */}
-            <Link href="/library" className="mb-8">
+            <Link href="/library" className="mb-8 hidden sm:block">
                 <motion.div
-                    className="h-10 w-10 rounded-lg bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-secondary)]"
                     whileHover={{ scale: 1.1, rotate: 5 }}
                     whileTap={{ scale: 0.95 }}
                     transition={{ type: "spring", stiffness: 400, damping: 17 }}
-                />
+                >
+                    <LogoMark className="h-10 w-10" />
+                </motion.div>
             </Link>
 
             {/* Navigation */}
-            <nav className="flex flex-col gap-2">
+            <nav className="flex flex-1 items-center justify-around gap-2 sm:flex-none sm:flex-col sm:justify-start">
                 {navItems.map((item, index) => {
                     const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
                     return (
@@ -46,7 +48,7 @@ export function GlobalSidebar() {
                             <Link
                                 href={item.href}
                                 className={cn(
-                                    "flex items-center justify-center w-10 h-10 rounded-[var(--radius-default)] transition-all duration-150 group relative",
+                                    "group relative flex h-11 w-11 items-center justify-center rounded-[var(--radius-default)] transition-all duration-150 sm:h-10 sm:w-10",
                                     isActive
                                         ? "bg-[var(--color-primary)] text-white"
                                         : "text-[var(--color-text-muted)] hover:text-[var(--color-text-light)] hover:bg-[var(--color-surface)]"
@@ -61,14 +63,14 @@ export function GlobalSidebar() {
                                 {/* Active indicator */}
                                 {isActive && (
                                     <motion.div
-                                        className="absolute -left-[1px] top-1/2 -translate-y-1/2 w-[3px] h-5 bg-[var(--color-primary)] rounded-r-full"
+                                        className="absolute bottom-0 left-1/2 h-[3px] w-5 -translate-x-1/2 rounded-t-full bg-[var(--color-primary)] sm:-left-[1px] sm:bottom-auto sm:top-1/2 sm:h-5 sm:w-[3px] sm:-translate-x-0 sm:-translate-y-1/2 sm:rounded-r-full"
                                         layoutId="activeIndicator"
                                         transition={{ type: "spring", stiffness: 500, damping: 30 }}
                                     />
                                 )}
                                 {/* Tooltip */}
                                 <motion.span
-                                    className="absolute left-full ml-3 px-2.5 py-1.5 bg-[var(--color-surface)] text-[var(--color-text-light)] text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none border border-[var(--color-border)] shadow-lg"
+                                    className="pointer-events-none absolute left-full ml-3 hidden whitespace-nowrap rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-2.5 py-1.5 text-xs text-[var(--color-text-light)] opacity-0 shadow-lg transition-opacity group-hover:opacity-100 sm:block"
                                     initial={{ x: -5, opacity: 0 }}
                                     whileHover={{ x: 0, opacity: 1 }}
                                 >

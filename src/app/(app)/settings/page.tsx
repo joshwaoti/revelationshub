@@ -6,21 +6,18 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { ColorPicker } from "@/components/ui/color-picker";
 import { ThemeToggle } from "@/components/theme-toggle";
 import {
     User,
     Bell,
     CreditCard,
-    Shield,
     Globe,
     HelpCircle,
     LogOut,
     Palette,
     Building2,
     Loader2,
-    Save,
     Upload,
     Type,
     Check,

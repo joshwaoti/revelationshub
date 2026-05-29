@@ -62,7 +62,8 @@ export default defineSchema({
             v.literal("uploading"),
             v.literal("processing"),
             v.literal("ready"),
-            v.literal("failed")
+            v.literal("failed"),
+            v.literal("cancelled")
         ),
         videoType: v.union(v.literal("sermon"), v.literal("podcast")),
         createdAt: v.number(),
@@ -174,7 +175,8 @@ export default defineSchema({
             v.literal("queued"),
             v.literal("running"),
             v.literal("completed"),
-            v.literal("failed")
+            v.literal("failed"),
+            v.literal("cancelled")
         ),
         progress: v.optional(v.number()),
         error: v.optional(v.string()),

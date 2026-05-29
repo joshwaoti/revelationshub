@@ -1,7 +1,7 @@
 "use client";
 
 import { use } from "react";
-import { useQuery, useMutation } from "convex/react";
+import { useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { Id } from "../../../../../convex/_generated/dataModel";
 import { motion } from "framer-motion";
@@ -81,21 +81,25 @@ export default function SermonDashboardPage({ params }: { params: Promise<{ id: 
     // Fetch sermon data
     const sermon = useQuery(api.sermons.getById, { sermonId });
 
-    // Fetch clips
-    const clips = useQuery(
-        api.clips.getBySermon,
+    // Fetch lightweight clip stats and preview rows for the overview.
+    const clipCounts = useQuery(
+        api.clips.getCountsBySermon,
+        sermon?._id ? { sermonId: sermon._id } : "skip"
+    );
+    const readyClipPreviews = useQuery(
+        api.clips.getReadyPreviewBySermon,
+        sermon?._id ? { sermonId: sermon._id, limit: 4 } : "skip"
+    );
+
+    // Fetch transcript metadata only; the full transcript is loaded on the transcription page.
+    const transcriptSummary = useQuery(
+        api.transcripts.getSummaryBySermon,
         sermon?._id ? { sermonId: sermon._id } : "skip"
     );
 
-    // Fetch transcript
-    const transcript = useQuery(
-        api.transcripts.getBySermon,
-        sermon?._id ? { sermonId: sermon._id } : "skip"
-    );
-
-    // Fetch generated content
-    const generatedContent = useQuery(
-        api.generatedContent.getBySermon,
+    // Fetch generated content counts without returning large content JSON payloads.
+    const contentCounts = useQuery(
+        api.generatedContent.getCountsBySermon,
         sermon?._id ? { sermonId: sermon._id } : "skip"
     );
 
@@ -129,20 +133,9 @@ export default function SermonDashboardPage({ params }: { params: Promise<{ id: 
         );
     }
 
-    // Get content counts by type
-    const contentCounts = {
-        quotes: generatedContent?.filter(c => c.type === "quote" && c.status === "ready").length || 0,
-        carousel: generatedContent?.filter(c => c.type === "carousel" && c.status === "ready").length || 0,
-        devotional: generatedContent?.filter(c => c.type === "devotional" && c.status === "ready").length || 0,
-        discussionGuide: generatedContent?.filter(c => c.type === "discussion_guide" && c.status === "ready").length || 0,
-        blogPost: generatedContent?.filter(c => c.type === "blog_post" && c.status === "ready").length || 0,
-        outline: generatedContent?.filter(c => c.type === "sermon_outline" && c.status === "ready").length || 0,
-    };
-
     // Processing status
     const isProcessing = sermon.status === "processing" || sermon.status === "uploading";
-    const readyClips = clips?.filter(c => c.status === "ready") || [];
-    const processingClips = clips?.filter(c => c.status === "processing" || c.status === "pending") || [];
+    const readyClips = readyClipPreviews || [];
 
     const handleGenerateAll = () => {
         if (sermon?._id) {
@@ -323,7 +316,7 @@ export default function SermonDashboardPage({ params }: { params: Promise<{ id: 
                                         Clips Generated
                                     </span>
                                     <span className="text-sm font-medium text-[var(--color-text-light)]">
-                                        {readyClips.length}
+                                        {clipCounts?.ready || 0}
                                     </span>
                                 </div>
                                 <div className="flex items-center justify-between p-2 rounded-lg hover:bg-[var(--color-surface)] transition-colors">
@@ -332,7 +325,7 @@ export default function SermonDashboardPage({ params }: { params: Promise<{ id: 
                                         Quotes
                                     </span>
                                     <span className="text-sm font-medium text-[var(--color-text-light)]">
-                                        {contentCounts.quotes}
+                                        {contentCounts?.quote || 0}
                                     </span>
                                 </div>
                                 <div className="flex items-center justify-between p-2 rounded-lg hover:bg-[var(--color-surface)] transition-colors">
@@ -341,7 +334,7 @@ export default function SermonDashboardPage({ params }: { params: Promise<{ id: 
                                         Has Transcript
                                     </span>
                                     <span className="text-sm font-medium text-[var(--color-text-light)]">
-                                        {transcript ? "Yes" : "No"}
+                                        {transcriptSummary?.exists ? "Yes" : "No"}
                                     </span>
                                 </div>
                             </div>
@@ -358,11 +351,11 @@ export default function SermonDashboardPage({ params }: { params: Promise<{ id: 
                         <CardContent>
                             <div className="space-y-2">
                                 {[
-                                    { name: "Carousel", count: contentCounts.carousel, icon: Image },
-                                    { name: "Discussion Guide", count: contentCounts.discussionGuide, icon: MessageSquare },
-                                    { name: "Devotional", count: contentCounts.devotional, icon: BookMarked },
-                                    { name: "Blog Post", count: contentCounts.blogPost, icon: Pen },
-                                    { name: "Outline", count: contentCounts.outline, icon: FileText },
+                                    { name: "Carousel", count: contentCounts?.carousel || 0, icon: Image },
+                                    { name: "Discussion Guide", count: contentCounts?.discussion_guide || 0, icon: MessageSquare },
+                                    { name: "Devotional", count: contentCounts?.devotional || 0, icon: BookMarked },
+                                    { name: "Blog Post", count: contentCounts?.blog_post || 0, icon: Pen },
+                                    { name: "Outline", count: contentCounts?.sermon_outline || 0, icon: FileText },
                                 ].map((item) => (
                                     <div
                                         key={item.name}
@@ -393,7 +386,7 @@ export default function SermonDashboardPage({ params }: { params: Promise<{ id: 
                             <div className="flex items-center justify-between">
                                 <CardTitle className="text-lg flex items-center gap-2">
                                     <Wand2 className="h-4 w-4 text-[var(--color-primary)]" />
-                                    Clips ({readyClips.length})
+                                    Clips ({clipCounts?.ready || 0})
                                 </CardTitle>
                                 <Link
                                     href={`/sermon/${sermon._id}/clips`}

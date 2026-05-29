@@ -4,6 +4,7 @@ import { useState, useCallback, useRef } from "react";
 import { useOrganization, useUser } from "@clerk/nextjs";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
+import { Id } from "../../convex/_generated/dataModel";
 import {
     Dialog,
     DialogContent,
@@ -22,13 +23,10 @@ import {
     CheckCircle,
     AlertCircle,
     Play,
-    Download,
     Clock,
+    X,
 } from "lucide-react";
 import { analytics } from "@/lib/posthog";
-
-// YouTube download service URL
-const YOUTUBE_SERVICE_URL = process.env.NEXT_PUBLIC_YOUTUBE_SERVICE_URL || "http://localhost:8001";
 
 interface UploadSermonModalProps {
     open: boolean;
@@ -82,23 +80,23 @@ export function UploadSermonModal({ open, onOpenChange, onSuccess }: UploadSermo
     const [step, setStep] = useState<UploadStep>("input");
     const [youtubeUrl, setYoutubeUrl] = useState("");
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
+    const [isDraggingFile, setIsDraggingFile] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [metadata, setMetadata] = useState<YouTubeMetadata | null>(null);
     const [uploadProgress, setUploadProgress] = useState(0);
-    const [sermonId, setSermonId] = useState<string | null>(null);
+    const [sermonId, setSermonId] = useState<Id<"sermons"> | null>(null);
 
     // YouTube download states
     const [ytStartTime, setYtStartTime] = useState(0);
     const [ytEndTime, setYtEndTime] = useState(0);
-    const [ytDownloading, setYtDownloading] = useState(false);
-    const [ytDownloadProgress, setYtDownloadProgress] = useState(0);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     // Processing config
     const [clipCount, setClipCount] = useState(3);
     const [videoType, setVideoType] = useState<"sermon" | "podcast">("sermon");
     const [captionEffect, setCaptionEffect] = useState<"none" | "pop" | "fade" | "karaoke">("karaoke");
+    const [uploadController, setUploadController] = useState<AbortController | null>(null);
 
     // Convex
     const convexOrg = useQuery(
@@ -110,6 +108,8 @@ export function UploadSermonModal({ open, onOpenChange, onSuccess }: UploadSermo
         user?.id ? { clerkUserId: user.id } : "skip"
     );
     const createSermon = useMutation(api.sermons.create);
+    const patchS3Key = useMutation(api.sermons.patchS3Key);
+    const cancelSermon = useMutation(api.sermons.cancel);
 
     // Fetch YouTube metadata
     const fetchYouTubeMetadata = async (url: string) => {
@@ -138,72 +138,6 @@ export function UploadSermonModal({ open, onOpenChange, onSuccess }: UploadSermo
         }
     };
 
-    // Download video from YouTube service
-    const downloadYouTubeVideo = async () => {
-        if (!metadata) return;
-
-        setYtDownloading(true);
-        setYtDownloadProgress(0);
-        setError(null);
-
-        try {
-            const params = new URLSearchParams({
-                url: youtubeUrl,
-                quality: "highest",  // Download best available quality
-            });
-
-            const videoDuration = metadata.duration || 0;
-            const effectiveEndTime = ytEndTime || videoDuration;
-
-            // Only pass start/end if not downloading full video
-            if (ytStartTime > 0) {
-                params.append("start", ytStartTime.toString());
-            }
-            if (effectiveEndTime < videoDuration) {
-                params.append("end", effectiveEndTime.toString());
-            }
-
-            const downloadUrl = `${YOUTUBE_SERVICE_URL}/api/youtube/download?${params}`;
-
-            const xhr = new XMLHttpRequest();
-            xhr.open("GET", downloadUrl, true);
-            xhr.responseType = "blob";
-
-            xhr.onprogress = (event) => {
-                if (event.lengthComputable) {
-                    const percent = Math.round((event.loaded / event.total) * 100);
-                    setYtDownloadProgress(percent);
-                }
-            };
-
-            xhr.onload = () => {
-                if (xhr.status === 200) {
-                    const blob = xhr.response;
-                    const downloadLink = document.createElement("a");
-                    downloadLink.href = URL.createObjectURL(blob);
-                    downloadLink.download = `${metadata.title?.slice(0, 50) || "video"}.mp4`;
-                    document.body.appendChild(downloadLink);
-                    downloadLink.click();
-                    document.body.removeChild(downloadLink);
-                    setYtDownloading(false);
-                    setYtDownloadProgress(100);
-                } else {
-                    throw new Error("Download failed");
-                }
-            };
-
-            xhr.onerror = () => {
-                setError("Download failed. Please try again.");
-                setYtDownloading(false);
-            };
-
-            xhr.send();
-        } catch (err) {
-            setError(err instanceof Error ? err.message : "Download failed");
-            setYtDownloading(false);
-        }
-    };
-
     // Format time helper
     const formatTime = (seconds: number): string => {
         const mins = Math.floor(seconds / 60);
@@ -211,23 +145,41 @@ export function UploadSermonModal({ open, onOpenChange, onSuccess }: UploadSermo
         return `${mins}:${secs.toString().padStart(2, "0")}`;
     };
 
-    // Handle file selection
-    const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
+    const acceptVideoFile = useCallback((file: File) => {
         if (file) {
             if (!file.type.startsWith("video/")) {
                 setError("Please select a video file");
-                return;
+                return false;
             }
             if (file.size > 2 * 1024 * 1024 * 1024) { // 2GB limit
                 setError("File size must be under 2GB");
-                return;
+                return false;
             }
             setSelectedFile(file);
             setError(null);
             analytics.trackSermonUpload("sermon", "upload");
         }
+
+        return true;
     }, []);
+
+    // Handle file selection
+    const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            acceptVideoFile(file);
+        }
+    }, [acceptVideoFile]);
+
+    const handleFileDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        setIsDraggingFile(false);
+
+        const file = e.dataTransfer.files?.[0];
+        if (file) {
+            acceptVideoFile(file);
+        }
+    }, [acceptVideoFile]);
 
     // Start processing
     const startProcessing = async () => {
@@ -241,51 +193,13 @@ export function UploadSermonModal({ open, onOpenChange, onSuccess }: UploadSermo
         setError(null);
 
         try {
-            let s3Key = "";
-
-            // Step 1: For file upload, get presigned URL and upload
-            if (activeTab === "upload" && selectedFile) {
-                setUploadProgress(10);
-
-                // Get presigned URL
-                const uploadResponse = await fetch("/api/upload", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        filename: selectedFile.name,
-                        contentType: selectedFile.type,
-                    }),
-                });
-
-                if (!uploadResponse.ok) {
-                    throw new Error("Failed to get upload URL");
-                }
-
-                const { presignedUrl, key } = await uploadResponse.json();
-                s3Key = key;
-
-                setUploadProgress(20);
-
-                // Upload to S3
-                const uploadResult = await fetch(presignedUrl, {
-                    method: "PUT",
-                    body: selectedFile,
-                    headers: { "Content-Type": selectedFile.type },
-                });
-
-                if (!uploadResult.ok) {
-                    throw new Error("Failed to upload file");
-                }
-
-                setUploadProgress(50);
-            }
-
-            // Step 2: Create sermon record in Convex
+            // Step 1: Create the Convex sermon record IMMEDIATELY so it shows
+            // in the library with an "Uploading" badge even if modal is closed.
             const newSermonId = await createSermon({
                 organizationId: convexOrg._id,
                 title: metadata?.title || selectedFile?.name || "Untitled Sermon",
                 description: metadata?.description,
-                s3Key: s3Key,
+                s3Key: "", // placeholder, patched below after upload
                 s3Bucket: process.env.NEXT_PUBLIC_S3_BUCKET || "josh-video-clipper",
                 // YouTube specific
                 youtubeUrl: activeTab === "youtube" ? youtubeUrl : undefined,
@@ -306,16 +220,88 @@ export function UploadSermonModal({ open, onOpenChange, onSuccess }: UploadSermo
             });
 
             setSermonId(newSermonId);
+            setUploadProgress(10);
+
+            let s3Key = "";
+
+            // Step 2a: For YouTube, download directly to S3 (server-side)
+            if (activeTab === "youtube" && metadata) {
+                const videoDuration = metadata.duration || 0;
+                const effectiveEndTime = ytEndTime || videoDuration;
+
+                const downloadResponse = await fetch("/api/youtube/download-to-s3", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        url: youtubeUrl,
+                        quality: "highest",
+                        start: ytStartTime > 0 ? ytStartTime.toString() : undefined,
+                        end: effectiveEndTime < videoDuration ? effectiveEndTime.toString() : undefined,
+                    }),
+                });
+
+                if (!downloadResponse.ok) {
+                    const errorData = await downloadResponse.json();
+                    throw new Error(errorData.error || "Failed to download video");
+                }
+
+                const downloadResult = await downloadResponse.json();
+                s3Key = downloadResult.s3Key;
+
+                setUploadProgress(50);
+            }
+
+            // Step 2b: For file upload, get presigned URL and upload
+            if (activeTab === "upload" && selectedFile) {
+                // Create abort controller for cancellation
+                const controller = new AbortController();
+                setUploadController(controller);
+
+                // Get presigned URL
+                const uploadResponse = await fetch("/api/upload", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        filename: selectedFile.name,
+                        contentType: selectedFile.type,
+                        fileSize: selectedFile.size,
+                    }),
+                });
+
+                if (!uploadResponse.ok) {
+                    throw new Error("Failed to get upload URL");
+                }
+
+                const { presignedUrl, key } = await uploadResponse.json();
+                s3Key = key;
+                setUploadProgress(25);
+
+                // Upload to S3 with abort support
+                const uploadResult = await fetch(presignedUrl, {
+                    method: "PUT",
+                    body: selectedFile,
+                    headers: { "Content-Type": selectedFile.type },
+                    signal: controller.signal,
+                });
+
+                if (!uploadResult.ok) {
+                    throw new Error("Failed to upload file");
+                }
+
+                setUploadProgress(50);
+            }
+
+            // Step 3: Patch the real S3 key onto the sermon record
+            await patchS3Key({ sermonId: newSermonId, s3Key });
             setUploadProgress(60);
 
-            // Step 3: Trigger processing via API
+            // Step 4: Trigger processing via Inngest pipeline
             const processResponse = await fetch("/api/process", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     sermonId: newSermonId,
-                    s3Key: s3Key || undefined,
-                    youtubeUrl: activeTab === "youtube" ? youtubeUrl : undefined,
+                    s3Key: s3Key,
                     videoType,
                     clipCount,
                     captionEffect,
@@ -357,8 +343,31 @@ export function UploadSermonModal({ open, onOpenChange, onSuccess }: UploadSermo
         setSermonId(null);
     };
 
+    // Cancel upload/processing
+    const handleCancel = async () => {
+        // Abort any ongoing upload
+        if (uploadController) {
+            uploadController.abort();
+        }
+
+        if (sermonId) {
+            try {
+                await cancelSermon({ sermonId });
+            } catch (err) {
+                console.error("Failed to cancel sermon:", err);
+            }
+        }
+        resetModal();
+        onOpenChange(false);
+    };
+
     // Handle close
     const handleClose = (isOpen: boolean) => {
+        if (!isOpen && (step === "processing" || step === "input")) {
+            // Cancel if closing during processing
+            handleCancel();
+            return;
+        }
         if (!isOpen) {
             resetModal();
         }
@@ -375,7 +384,7 @@ export function UploadSermonModal({ open, onOpenChange, onSuccess }: UploadSermo
 
     return (
         <Dialog open={open} onOpenChange={handleClose}>
-            <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
+            <DialogContent className="max-h-[92dvh] overflow-y-auto sm:max-w-2xl">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                         <Upload className="h-5 w-5 text-[var(--color-primary)]" />
@@ -405,7 +414,7 @@ export function UploadSermonModal({ open, onOpenChange, onSuccess }: UploadSermo
                                     <label className="block text-sm font-medium text-[var(--color-text-light)] mb-2">
                                         YouTube URL
                                     </label>
-                                    <div className="flex gap-2">
+                                    <div className="flex flex-col gap-2 sm:flex-row">
                                         <Input
                                             placeholder="https://youtube.com/watch?v=..."
                                             value={youtubeUrl}
@@ -421,29 +430,29 @@ export function UploadSermonModal({ open, onOpenChange, onSuccess }: UploadSermo
                                 </div>
 
                                 {metadata && (
-                                    <div className="bg-[var(--color-surface)] rounded-lg p-4 space-y-3">
-                                        <div className="flex gap-3">
+                                    <div className="bg-[var(--color-surface)] rounded-lg p-3 space-y-3 sm:p-4">
+                                        <div className="flex flex-col gap-3 sm:flex-row">
                                             {metadata.thumbnail && (
                                                 <img
                                                     src={metadata.thumbnail}
                                                     alt="Thumbnail"
-                                                    className="w-40 h-24 object-cover rounded"
+                                                    className="aspect-video w-full rounded object-cover sm:h-24 sm:w-40"
                                                 />
                                             )}
                                             <div className="flex-1 min-w-0">
                                                 <h4 className="font-medium text-[var(--color-text-light)] line-clamp-2 mb-1">
                                                     {metadata.title}
                                                 </h4>
-                                                <p className="text-sm text-[var(--color-text-muted)] flex items-center gap-2">
-                                                    <span>{metadata.channelName}</span>
+                                                <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-[var(--color-text-muted)]">
+                                                    <span className="min-w-0 break-words">{metadata.channelName}</span>
                                                     {metadata.viewCountFormatted && (
                                                         <>
-                                                            <span className="text-[var(--color-text-muted)]/50">•</span>
+                                                            <span className="text-[var(--color-text-muted)]/50">/</span>
                                                             <span>{metadata.viewCountFormatted} views</span>
                                                         </>
                                                     )}
                                                 </p>
-                                                <div className="flex items-center gap-3 mt-1 text-xs text-[var(--color-text-muted)]">
+                                                <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[var(--color-text-muted)]">
                                                     <span className="font-mono">
                                                         {Math.floor(metadata.duration / 60)}:{(metadata.duration % 60).toString().padStart(2, "0")}
                                                     </span>
@@ -478,9 +487,9 @@ export function UploadSermonModal({ open, onOpenChange, onSuccess }: UploadSermo
                                             </div>
                                         )}
 
-                                        <div className="flex items-center gap-4 text-sm">
+                                        <div className="flex flex-wrap items-center gap-3 text-sm">
                                             {metadata.hasTranscript ? (
-                                                <span className="flex items-center gap-1 text-green-500">
+                                                <span className="flex min-w-0 flex-wrap items-center gap-1 text-green-500">
                                                     <CheckCircle className="h-4 w-4" />
                                                     Captions available
                                                     {metadata.captionLanguages.length > 0 && (
@@ -499,7 +508,7 @@ export function UploadSermonModal({ open, onOpenChange, onSuccess }: UploadSermo
 
                                         {/* Time Range Selection */}
                                         <div className="border-t border-[var(--color-border)] pt-3 mt-3 space-y-3">
-                                            <div className="flex items-center justify-between">
+                                            <div className="flex flex-wrap items-center justify-between gap-2">
                                                 <div className="flex items-center gap-2 text-sm font-medium">
                                                     <Clock className="h-4 w-4" />
                                                     Time Range
@@ -513,7 +522,7 @@ export function UploadSermonModal({ open, onOpenChange, onSuccess }: UploadSermo
                                             <p className="text-xs text-[var(--color-text-muted)]">
                                                 Leave as default to download the entire video, or enter specific seconds to download a portion.
                                             </p>
-                                            <div className="flex items-center gap-4">
+                                            <div className="grid gap-3 sm:grid-cols-[1fr_auto_1fr] sm:items-start">
                                                 <div className="flex-1">
                                                     <label className="text-xs text-[var(--color-text-muted)]">Start (seconds)</label>
                                                     <Input
@@ -529,7 +538,7 @@ export function UploadSermonModal({ open, onOpenChange, onSuccess }: UploadSermo
                                                         {formatTime(ytStartTime)}
                                                     </span>
                                                 </div>
-                                                <span className="text-[var(--color-text-muted)] mt-3">to</span>
+                                                <span className="hidden text-[var(--color-text-muted)] sm:mt-7 sm:block">to</span>
                                                 <div className="flex-1">
                                                     <label className="text-xs text-[var(--color-text-muted)]">End (seconds)</label>
                                                     <Input
@@ -547,54 +556,51 @@ export function UploadSermonModal({ open, onOpenChange, onSuccess }: UploadSermo
                                                 </div>
                                             </div>
                                             <p className="text-xs text-[var(--color-text-muted)]">
-                                                Selected: {formatTime(ytStartTime)} → {formatTime(ytEndTime || metadata.duration)} ({formatTime((ytEndTime || metadata.duration) - ytStartTime)})
+                                                Selected: {formatTime(ytStartTime)} to {formatTime(ytEndTime || metadata.duration)} ({formatTime((ytEndTime || metadata.duration) - ytStartTime)})
                                             </p>
                                         </div>
 
-                                        {/* Download Button */}
-                                        <Button
-                                            onClick={downloadYouTubeVideo}
-                                            disabled={ytDownloading}
-                                            className="w-full bg-gradient-to-r from-red-500 to-red-600 hover:opacity-90"
-                                        >
-                                            {ytDownloading ? (
-                                                <>
-                                                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                                                    Downloading... {ytDownloadProgress}%
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <Download className="h-4 w-4 mr-2" />
-                                                    Download from YouTube
-                                                </>
-                                            )}
-                                        </Button>
-
-                                        {ytDownloading && (
-                                            <div className="w-full bg-[var(--color-base)] rounded-full h-2 overflow-hidden">
-                                                <div
-                                                    className="h-full bg-gradient-to-r from-red-500 to-red-600 transition-all duration-300"
-                                                    style={{ width: `${ytDownloadProgress}%` }}
-                                                />
-                                            </div>
-                                        )}
-
-                                        <p className="text-xs text-[var(--color-text-muted)] text-center">
-                                            After downloading, go to the "Upload" tab to upload the video file.
-                                        </p>
+                                        {/* Ready to Process indicator */}
+                                        <div className="flex items-start gap-2 p-3 rounded-lg bg-green-500/10 border border-green-500/20">
+                                            <CheckCircle className="h-5 w-5 text-green-500 flex-shrink-0" />
+                                            <p className="text-sm text-green-400">
+                                                Video ready. Click <strong>Start Processing</strong> below to generate clips and content.
+                                            </p>
+                                        </div>
                                     </div>
                                 )}
                             </TabsContent>
 
                             <TabsContent value="upload" className="space-y-4 mt-4">
                                 <div
-                                    className="border-2 border-dashed border-[var(--color-primary)]/30 rounded-lg p-8 text-center hover:border-[var(--color-primary)] transition-colors cursor-pointer"
-                                    onClick={() => document.getElementById("file-input")?.click()}
+                                    className={`cursor-pointer rounded-lg border-2 border-dashed p-5 text-center transition-colors sm:p-8 ${isDraggingFile ? "border-[var(--color-primary)] bg-[var(--color-primary)]/10" : "border-[var(--color-primary)]/30 hover:border-[var(--color-primary)]"}`}
+                                    onClick={() => fileInputRef.current?.click()}
+                                    onDragEnter={(e) => {
+                                        e.preventDefault();
+                                        setIsDraggingFile(true);
+                                    }}
+                                    onDragOver={(e) => {
+                                        e.preventDefault();
+                                        setIsDraggingFile(true);
+                                    }}
+                                    onDragLeave={(e) => {
+                                        e.preventDefault();
+                                        setIsDraggingFile(false);
+                                    }}
+                                    onDrop={handleFileDrop}
+                                    role="button"
+                                    tabIndex={0}
+                                    onKeyDown={(e) => {
+                                        if (e.key === "Enter" || e.key === " ") {
+                                            e.preventDefault();
+                                            fileInputRef.current?.click();
+                                        }
+                                    }}
                                 >
                                     {selectedFile ? (
                                         <div className="space-y-2">
                                             <FileVideo className="h-10 w-10 mx-auto text-[var(--color-primary)]" />
-                                            <p className="font-medium text-[var(--color-text-light)]">
+                                            <p className="break-all font-medium text-[var(--color-text-light)]">
                                                 {selectedFile.name}
                                             </p>
                                             <p className="text-sm text-[var(--color-text-muted)]">
@@ -605,7 +611,7 @@ export function UploadSermonModal({ open, onOpenChange, onSuccess }: UploadSermo
                                         <>
                                             <Upload className="h-10 w-10 mx-auto mb-3 text-[var(--color-text-muted)]" />
                                             <p className="text-[var(--color-text-light)]">
-                                                Click or drag to upload
+                                                Drop a video here or tap to browse
                                             </p>
                                             <p className="text-sm text-[var(--color-text-muted)]">
                                                 MP4, MOV, WEBM up to 2GB
@@ -614,6 +620,7 @@ export function UploadSermonModal({ open, onOpenChange, onSuccess }: UploadSermo
                                     )}
                                 </div>
                                 <input
+                                    ref={fileInputRef}
                                     id="file-input"
                                     type="file"
                                     accept="video/*"
@@ -625,8 +632,8 @@ export function UploadSermonModal({ open, onOpenChange, onSuccess }: UploadSermo
 
                         {/* Processing Config */}
                         <div className="border-t border-[var(--color-primary)]/10 pt-4 space-y-4">
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
+                            <div className="grid gap-4 sm:grid-cols-2">
+                                <div className="sm:col-span-2">
                                     <label className="block text-sm font-medium text-[var(--color-text-light)] mb-2">
                                         Video Type
                                     </label>
@@ -675,7 +682,7 @@ export function UploadSermonModal({ open, onOpenChange, onSuccess }: UploadSermo
                             </div>
                         )}
 
-                        <div className="flex justify-end gap-2">
+                        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                             <Button variant="outline" onClick={() => handleClose(false)}>
                                 Cancel
                             </Button>
@@ -715,6 +722,14 @@ export function UploadSermonModal({ open, onOpenChange, onSuccess }: UploadSermo
                                 uploadProgress < 80 ? "Processing started..." :
                                     "Finishing up..."}
                         </p>
+                        <Button
+                            variant="outline"
+                            onClick={handleCancel}
+                            className="mt-4"
+                        >
+                            <X className="h-4 w-4 mr-2" />
+                            Cancel
+                        </Button>
                     </div>
                 )}
 

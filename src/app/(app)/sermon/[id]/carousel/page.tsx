@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useState, useEffect } from "react";
+import { use, useState } from "react";
 import { useQuery } from "convex/react";
 import { api } from "../../../../../../convex/_generated/api";
 import { Id } from "../../../../../../convex/_generated/dataModel";
@@ -15,7 +15,7 @@ import {
     ChevronRight,
     Loader2,
     Sparkles,
-    Image,
+    Image as ImageIcon,
     GripVertical,
 } from "lucide-react";
 import Link from "next/link";
@@ -32,6 +32,13 @@ const gradientOptions = [
     "from-green-400 via-emerald-500 to-teal-600",
 ];
 
+type CarouselSlide = {
+    type?: "cover" | "quote" | "list" | "action" | "cta" | string;
+    title?: string;
+    subtitle?: string;
+    content?: string;
+};
+
 export default function SocialCarouselPage({ params }: { params: Promise<{ id: string }> }) {
     const resolvedParams = use(params);
     const sermonId = resolvedParams.id as Id<"sermons">;
@@ -39,14 +46,14 @@ export default function SocialCarouselPage({ params }: { params: Promise<{ id: s
     // Fetch sermon
     const sermon = useQuery(api.sermons.getById, { sermonId });
 
-    // Fetch generated content
-    const generatedContent = useQuery(
-        api.generatedContent.getBySermon,
-        sermon?._id ? { sermonId: sermon._id } : "skip"
+    // Fetch only carousel content for this page.
+    const carouselContent = useQuery(
+        api.generatedContent.getBySermonAndType,
+        sermon?._id ? { sermonId: sermon._id, type: "carousel" } : "skip"
     );
 
-    const carousel = generatedContent?.find(c => c.type === "carousel" && c.status === "ready");
-    const isProcessing = generatedContent?.some(c => c.type === "carousel" && c.status === "processing");
+    const carousel = carouselContent?.find(c => c.status === "ready");
+    const isProcessing = carouselContent?.some(c => c.status === "processing");
 
     const [currentSlide, setCurrentSlide] = useState(0);
 
@@ -60,17 +67,17 @@ export default function SocialCarouselPage({ params }: { params: Promise<{ id: s
     };
 
     // Parse content
-    const parseContent = (content: string) => {
+    const parseContent = (content: string): CarouselSlide[] => {
         try {
             const parsed = JSON.parse(content);
-            return parsed.slides || [];
+            return Array.isArray(parsed.slides) ? parsed.slides : [];
         } catch {
             return [];
         }
     };
 
     // Loading state
-    if (sermon === undefined || generatedContent === undefined) {
+    if (sermon === undefined || carouselContent === undefined) {
         return (
             <div className="flex items-center justify-center min-h-[60vh]">
                 <Loader2 className="h-8 w-8 animate-spin text-[var(--color-primary)]" />
@@ -140,7 +147,7 @@ export default function SocialCarouselPage({ params }: { params: Promise<{ id: s
             {/* No content state */}
             {slides.length === 0 && !isProcessing && (
                 <div className="text-center py-16">
-                    <Image className="h-12 w-12 mx-auto text-[var(--color-text-muted)] mb-4" />
+                    <ImageIcon className="h-12 w-12 mx-auto text-[var(--color-text-muted)] mb-4" />
                     <h3 className="text-lg font-semibold text-[var(--color-text-light)] mb-2">
                         No Carousel Generated Yet
                     </h3>
@@ -189,7 +196,7 @@ export default function SocialCarouselPage({ params }: { params: Promise<{ id: s
                                     </h3>
                                 </div>
                                 <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2">
-                                    {slides.map((slide: any, index: number) => (
+                                    {slides.map((slide, index) => (
                                         <motion.button
                                             key={index}
                                             onClick={() => setCurrentSlide(index)}
@@ -214,7 +221,7 @@ export default function SocialCarouselPage({ params }: { params: Promise<{ id: s
                                                     </span>
                                                 </div>
                                                 <p className="text-sm text-[var(--color-text-light)] line-clamp-1">
-                                                    {slide.title || slide.content?.slice(0, 30) + "..."}
+                                                    {slide.title || `${slide.content?.slice(0, 30) || "Slide"}...`}
                                                 </p>
                                             </div>
                                         </motion.button>
@@ -338,7 +345,7 @@ export default function SocialCarouselPage({ params }: { params: Promise<{ id: s
 
                                 {/* Slide dots */}
                                 <div className="flex justify-center gap-2 mt-4">
-                                    {slides.map((_: any, index: number) => (
+                                    {slides.map((_, index) => (
                                         <motion.button
                                             key={index}
                                             onClick={() => setCurrentSlide(index)}

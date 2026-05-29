@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { Inter, Outfit, JetBrains_Mono } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ConvexClientProvider } from "@/lib/convex";
@@ -7,35 +6,34 @@ import { PostHogProvider } from "@/lib/posthog";
 import { Toaster } from "sonner";
 import "./globals.css";
 
-const inter = Inter({
-  variable: "--font-inter",
-  subsets: ["latin"],
-  display: "swap",
-});
-
-const outfit = Outfit({
-  variable: "--font-outfit",
-  subsets: ["latin"],
-  display: "swap",
-});
-
-const jetbrainsMono = JetBrains_Mono({
-  variable: "--font-jetbrains-mono",
-  subsets: ["latin"],
-  display: "swap",
-});
-
 export const metadata: Metadata = {
-  title: "RevelationsHub - Your Sunday Message. Monday's Movement.",
-  description:
-    "Transform your sermons into engaging clips, discussion guides, and social content with intelligent tools designed for ministry.",
-  keywords: [
-    "sermon clips",
-    "church video",
-    "ministry tools",
-    "video editor",
-    "discussion guides",
-  ],
+  metadataBase: new URL("https://revelationshub.com"),
+  title: {
+    default: "RevelationsHub — Turn Every Sermon Into a Week of Ministry Content",
+    template: "%s | RevelationsHub",
+  },
+  description: "Transform sermons into accurate clips, modern captions, discussion guides, devotionals, quote graphics, carousels, blogs, and podcast assets. Built for churches.",
+  keywords: ["sermon clips", "church video editor", "ministry content", "sermon repurposing", "church social media", "caption generator", "sermon AI", "church content creation"],
+  icons: {
+    icon: "/revelationshub-mark.svg",
+  },
+  openGraph: {
+    type: "website",
+    locale: "en_US",
+    url: "https://revelationshub.com",
+    siteName: "RevelationsHub",
+    title: "RevelationsHub — Turn Every Sermon Into a Week of Ministry Content",
+    description: "Transform sermons into clips, captions, guides, and social content.",
+    images: [{ url: "/og-image.png", width: 1200, height: 630, alt: "RevelationsHub" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "RevelationsHub — Sermon Content for Modern Ministry",
+    description: "One sermon becomes clips, captions, guides, and social content.",
+    images: ["/og-image.png"],
+  },
+  robots: { index: true, follow: true },
+  alternates: { canonical: "https://revelationshub.com" },
 };
 
 export default function RootLayout({
@@ -72,8 +70,13 @@ export default function RootLayout({
       }}
     >
       <html lang="en" suppressHydrationWarning>
+        <head>
+          <link rel="preconnect" href="https://fonts.googleapis.com" />
+          <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+          <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&family=Outfit:wght@100..900&family=JetBrains+Mono:wght@100..800&display=swap" rel="stylesheet" />
+        </head>
         <body
-          className={`${inter.variable} ${outfit.variable} ${jetbrainsMono.variable} antialiased`}
+          className="antialiased"
         >
           <ConvexClientProvider>
             <PostHogProvider>

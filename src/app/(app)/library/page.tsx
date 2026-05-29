@@ -3,8 +3,9 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useOrganization } from "@clerk/nextjs";
-import { useQuery } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
+import { Id } from "../../../../convex/_generated/dataModel";
 import { motion, AnimatePresence } from "framer-motion";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -22,6 +23,9 @@ import {
     Calendar,
     Video,
     Loader2,
+    Trash2,
+    X,
+    AlertTriangle,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -77,6 +81,10 @@ export default function LibraryPage() {
     const [view, setView] = useState<"grid" | "list">("grid");
     const [searchQuery, setSearchQuery] = useState("");
     const [uploadModalOpen, setUploadModalOpen] = useState(false);
+    const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+    const [sermonToDelete, setSermonToDelete] = useState<{ id: Id<"sermons">; title: string } | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
 
     // Get organization from Convex
     const convexOrg = useQuery(
@@ -90,26 +98,101 @@ export default function LibraryPage() {
         convexOrg?._id ? { organizationId: convexOrg._id } : "skip"
     );
 
-    // Get clips count for each sermon
-    const clipsData = useQuery(
-        api.clips.getBySermon,
-        sermons && sermons.length > 0 && sermons[0]?._id ? { sermonId: sermons[0]._id } : "skip"
-    );
+    // Mutations
+    const deleteSermon = useMutation(api.sermons.remove);
+    const cancelSermon = useMutation(api.sermons.cancel);
 
     // Loading state
     const isLoading = !organization || convexOrg === undefined || sermons === undefined;
 
     // Filter sermons based on search
-    const filteredSermons = (sermons || []).filter(
-        (sermon) =>
-            sermon.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            (sermon.series?.toLowerCase().includes(searchQuery.toLowerCase())) ||
-            (sermon.speaker?.toLowerCase().includes(searchQuery.toLowerCase()))
+    const filteredSermons = (sermons || [])
+        .filter(
+            (sermon) =>
+                sermon.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                (sermon.series?.toLowerCase().includes(searchQuery.toLowerCase())) ||
+                (sermon.speaker?.toLowerCase().includes(searchQuery.toLowerCase()))
+        )
+        // Pinning uploading/processing sermons to the top
+        .sort((a, b) => {
+            const inProgress = (s: typeof a) =>
+                s.status === "uploading" || s.status === "processing" ? 0 : 1;
+            return inProgress(a) - inProgress(b);
+        });
+
+    // Get status badge variant
+    const getStatusVariant = (status: string) => {
+        switch (status) {
+            case "ready":
+                return "success";
+            case "processing":
+                return "processing";
+            case "failed":
+                return "destructive";
+            case "cancelled":
+                return "secondary";
+            default:
+                return "secondary";
+        }
+    };
+
+    // Get status label
+    const getStatusLabel = (status: string) => {
+        switch (status) {
+            case "ready":
+                return "Ready";
+            case "processing":
+                return "Processing";
+            case "failed":
+                return "Failed";
+            case "cancelled":
+                return "Cancelled";
+            case "uploading":
+            default:
+                return "Uploading";
+        }
+    };
+
+    // Whether any sermon is currently being uploaded or processed
+    const hasInProgressSermon = (sermons || []).some(
+        (s) => s.status === "uploading" || s.status === "processing"
     );
 
     // Handle upload success
     const handleUploadSuccess = (sermonId: string) => {
         router.push(`/sermon/${sermonId}`);
+    };
+
+    // Handle delete click
+    const handleDeleteClick = (sermon: { _id: Id<"sermons">; title: string }) => {
+        setSermonToDelete({ id: sermon._id, title: sermon.title });
+        setDeleteDialogOpen(true);
+        setOpenMenuId(null);
+    };
+
+    // Confirm delete
+    const handleConfirmDelete = async () => {
+        if (!sermonToDelete) return;
+        setIsDeleting(true);
+        try {
+            await deleteSermon({ sermonId: sermonToDelete.id });
+            setDeleteDialogOpen(false);
+            setSermonToDelete(null);
+        } catch (error) {
+            console.error("Failed to delete sermon:", error);
+        } finally {
+            setIsDeleting(false);
+        }
+    };
+
+    // Handle cancel/stop click
+    const handleCancelClick = async (sermonId: Id<"sermons">) => {
+        setOpenMenuId(null);
+        try {
+            await cancelSermon({ sermonId });
+        } catch (error) {
+            console.error("Failed to cancel sermon:", error);
+        }
     };
 
     return (
@@ -164,10 +247,18 @@ export default function LibraryPage() {
                             <List className="h-4 w-4" />
                         </motion.button>
                     </div>
-                    <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                        <Button onClick={() => setUploadModalOpen(true)}>
-                            <Upload className="h-4 w-4 mr-2" />
-                            Upload Sermon
+                    <motion.div whileHover={{ scale: hasInProgressSermon ? 1 : 1.02 }} whileTap={{ scale: hasInProgressSermon ? 1 : 0.98 }}>
+                        <Button
+                            onClick={() => setUploadModalOpen(true)}
+                            disabled={hasInProgressSermon}
+                            title={hasInProgressSermon ? "A sermon is currently uploading or processing. Please wait." : undefined}
+                        >
+                            {hasInProgressSermon ? (
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            ) : (
+                                <Upload className="h-4 w-4 mr-2" />
+                            )}
+                            {hasInProgressSermon ? "Processing..." : "Upload Sermon"}
                         </Button>
                     </motion.div>
                 </div>
@@ -243,26 +334,57 @@ export default function LibraryPage() {
                                                     </motion.div>
                                                 </motion.div>
                                                 {/* Status Badge */}
-                                                <div className="absolute top-2 right-2">
-                                                    <Badge
-                                                        variant={
-                                                            sermon.status === "ready"
-                                                                ? "success"
-                                                                : sermon.status === "processing"
-                                                                    ? "processing"
-                                                                    : sermon.status === "failed"
-                                                                        ? "destructive"
-                                                                        : "secondary"
-                                                        }
-                                                    >
-                                                        {sermon.status === "ready"
-                                                            ? "Ready"
-                                                            : sermon.status === "processing"
-                                                                ? "Processing"
-                                                                : sermon.status === "uploading"
-                                                                    ? "Uploading"
-                                                                    : "Failed"}
+                                                <div className="absolute top-2 right-2 flex items-center gap-1">
+                                                    <Badge variant={getStatusVariant(sermon.status)}>
+                                                        {getStatusLabel(sermon.status)}
                                                     </Badge>
+                                                </div>
+                                                {/* Actions Menu */}
+                                                <div className="absolute top-2 left-2">
+                                                    <motion.button
+                                                        className="p-1.5 bg-black/40 hover:bg-black/60 rounded-lg text-white/80 hover:text-white transition-colors"
+                                                        whileHover={{ scale: 1.1 }}
+                                                        whileTap={{ scale: 0.9 }}
+                                                        onClick={(e) => {
+                                                            e.preventDefault();
+                                                            setOpenMenuId(openMenuId === sermon._id ? null : sermon._id);
+                                                        }}
+                                                    >
+                                                        <MoreVertical className="h-4 w-4" />
+                                                    </motion.button>
+                                                    <AnimatePresence>
+                                                        {openMenuId === sermon._id && (
+                                                            <motion.div
+                                                                initial={{ opacity: 0, scale: 0.95 }}
+                                                                animate={{ opacity: 1, scale: 1 }}
+                                                                exit={{ opacity: 0, scale: 0.95 }}
+                                                                className="absolute left-0 top-full mt-1 w-40 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg shadow-lg overflow-hidden z-10"
+                                                            >
+                                                                {(sermon.status === "uploading" || sermon.status === "processing") && (
+                                                                    <button
+                                                                        className="w-full px-3 py-2 text-left text-sm text-[var(--color-text-light)] hover:bg-[var(--color-base)] flex items-center gap-2"
+                                                                        onClick={(e) => {
+                                                                            e.preventDefault();
+                                                                            handleCancelClick(sermon._id);
+                                                                        }}
+                                                                    >
+                                                                        <X className="h-4 w-4" />
+                                                                        Stop
+                                                                    </button>
+                                                                )}
+                                                                <button
+                                                                    className="w-full px-3 py-2 text-left text-sm text-red-500 hover:bg-[var(--color-base)] flex items-center gap-2"
+                                                                    onClick={(e) => {
+                                                                        e.preventDefault();
+                                                                        handleDeleteClick({ _id: sermon._id, title: sermon.title });
+                                                                    }}
+                                                                >
+                                                                    <Trash2 className="h-4 w-4" />
+                                                                    Delete
+                                                                </button>
+                                                            </motion.div>
+                                                        )}
+                                                    </AnimatePresence>
                                                 </div>
                                                 {/* Duration */}
                                                 <div className="absolute bottom-2 right-2 bg-black/60 px-2 py-0.5 rounded text-xs text-white font-mono">
@@ -341,24 +463,8 @@ export default function LibraryPage() {
                                                                 {sermon.series || "No series"} • {sermon.speaker || "Unknown"}
                                                             </p>
                                                         </div>
-                                                        <Badge
-                                                            variant={
-                                                                sermon.status === "ready"
-                                                                    ? "success"
-                                                                    : sermon.status === "processing"
-                                                                        ? "processing"
-                                                                        : sermon.status === "failed"
-                                                                            ? "destructive"
-                                                                            : "secondary"
-                                                            }
-                                                        >
-                                                            {sermon.status === "ready"
-                                                                ? "Ready"
-                                                                : sermon.status === "processing"
-                                                                    ? "Processing"
-                                                                    : sermon.status === "uploading"
-                                                                        ? "Uploading"
-                                                                        : "Failed"}
+                                                        <Badge variant={getStatusVariant(sermon.status)}>
+                                                            {getStatusLabel(sermon.status)}
                                                         </Badge>
                                                     </div>
                                                     <div className="flex items-center gap-6 mt-3 text-sm text-[var(--color-text-muted)]">
@@ -373,13 +479,52 @@ export default function LibraryPage() {
                                                     </div>
                                                 </div>
                                                 {/* Actions */}
-                                                <motion.button
-                                                    className="p-2 text-[var(--color-text-muted)] hover:text-[var(--color-text-light)] hover:bg-[var(--color-surface)] rounded-lg transition-colors"
-                                                    whileHover={{ scale: 1.1 }}
-                                                    whileTap={{ scale: 0.9 }}
-                                                >
-                                                    <MoreVertical className="h-4 w-4" />
-                                                </motion.button>
+                                                <div className="relative">
+                                                    <motion.button
+                                                        className="p-2 text-[var(--color-text-muted)] hover:text-[var(--color-text-light)] hover:bg-[var(--color-surface)] rounded-lg transition-colors"
+                                                        whileHover={{ scale: 1.1 }}
+                                                        whileTap={{ scale: 0.9 }}
+                                                        onClick={(e) => {
+                                                            e.preventDefault();
+                                                            setOpenMenuId(openMenuId === sermon._id ? null : sermon._id);
+                                                        }}
+                                                    >
+                                                        <MoreVertical className="h-4 w-4" />
+                                                    </motion.button>
+                                                    <AnimatePresence>
+                                                        {openMenuId === sermon._id && (
+                                                            <motion.div
+                                                                initial={{ opacity: 0, scale: 0.95 }}
+                                                                animate={{ opacity: 1, scale: 1 }}
+                                                                exit={{ opacity: 0, scale: 0.95 }}
+                                                                className="absolute right-0 top-full mt-1 w-48 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg shadow-lg overflow-hidden z-10"
+                                                            >
+                                                                {(sermon.status === "uploading" || sermon.status === "processing") && (
+                                                                    <button
+                                                                        className="w-full px-4 py-2 text-left text-sm text-[var(--color-text-light)] hover:bg-[var(--color-base)] flex items-center gap-2"
+                                                                        onClick={(e) => {
+                                                                            e.preventDefault();
+                                                                            handleCancelClick(sermon._id);
+                                                                        }}
+                                                                    >
+                                                                        <X className="h-4 w-4" />
+                                                                        Stop Processing
+                                                                    </button>
+                                                                )}
+                                                                <button
+                                                                    className="w-full px-4 py-2 text-left text-sm text-red-500 hover:bg-[var(--color-base)] flex items-center gap-2"
+                                                                    onClick={(e) => {
+                                                                        e.preventDefault();
+                                                                        handleDeleteClick({ _id: sermon._id, title: sermon.title });
+                                                                    }}
+                                                                >
+                                                                    <Trash2 className="h-4 w-4" />
+                                                                    Delete
+                                                                </button>
+                                                            </motion.div>
+                                                        )}
+                                                    </AnimatePresence>
+                                                </div>
                                             </div>
                                         </Card>
                                     </motion.div>
@@ -415,6 +560,65 @@ export default function LibraryPage() {
                 onOpenChange={setUploadModalOpen}
                 onSuccess={handleUploadSuccess}
             />
+
+            {/* Delete Confirmation Dialog */}
+            <AnimatePresence>
+                {deleteDialogOpen && (
+                    <motion.div
+                        className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        onClick={() => setDeleteDialogOpen(false)}
+                    >
+                        <motion.div
+                            className="bg-[var(--color-surface)] rounded-lg p-6 max-w-md w-full mx-4"
+                            initial={{ scale: 0.95, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.95, opacity: 0 }}
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <div className="flex items-center gap-3 mb-4">
+                                <div className="h-10 w-10 rounded-full bg-red-500/20 flex items-center justify-center">
+                                    <AlertTriangle className="h-5 w-5 text-red-500" />
+                                </div>
+                                <h3 className="text-lg font-semibold text-[var(--color-text-light)]">
+                                    Delete Sermon
+                                </h3>
+                            </div>
+                            <p className="text-[var(--color-text-muted)] mb-6">
+                                Are you sure you want to delete &quot;{sermonToDelete?.title}&quot;? This will also delete all associated clips, transcripts, and generated content. This action cannot be undone.
+                            </p>
+                            <div className="flex justify-end gap-3">
+                                <Button
+                                    variant="outline"
+                                    onClick={() => setDeleteDialogOpen(false)}
+                                    disabled={isDeleting}
+                                >
+                                    Cancel
+                                </Button>
+                                <Button
+                                    variant="destructive"
+                                    onClick={handleConfirmDelete}
+                                    disabled={isDeleting}
+                                >
+                                    {isDeleting ? (
+                                        <>
+                                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                            Deleting...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Trash2 className="h-4 w-4 mr-2" />
+                                            Delete
+                                        </>
+                                    )}
+                                </Button>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }

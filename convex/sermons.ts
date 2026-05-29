@@ -38,7 +38,6 @@ export const create = mutation({
         return sermonId;
     },
 });
-
 // Get all sermons for an organization
 export const getByOrg = query({
     args: { organizationId: v.id("organizations") },
@@ -68,7 +67,8 @@ export const updateStatus = mutation({
             v.literal("uploading"),
             v.literal("processing"),
             v.literal("ready"),
-            v.literal("failed")
+            v.literal("failed"),
+            v.literal("cancelled")
         ),
     },
     handler: async (ctx, args) => {
@@ -97,5 +97,136 @@ export const update = mutation({
             Object.entries(updates).filter(([, value]) => value !== undefined)
         );
         await ctx.db.patch(sermonId, filteredUpdates);
+    },
+});
+
+// Patch the S3 key after actual upload completes
+export const patchS3Key = mutation({
+    args: {
+        sermonId: v.id("sermons"),
+        s3Key: v.string(),
+    },
+    handler: async (ctx, args) => {
+        await ctx.db.patch(args.sermonId, { s3Key: args.s3Key });
+    },
+});
+
+// Delete a sermon and all related data
+export const remove = mutation({
+    args: { sermonId: v.id("sermons") },
+    handler: async (ctx, args) => {
+        const sermon = await ctx.db.get(args.sermonId);
+        if (!sermon) {
+            throw new Error("Sermon not found");
+        }
+
+        // Delete all related clips
+        const clips = await ctx.db
+            .query("clips")
+            .withIndex("by_sermon", (q) => q.eq("sermonId", args.sermonId))
+            .collect();
+        for (const clip of clips) {
+            await ctx.db.delete(clip._id);
+        }
+
+        // Delete all related viral moments
+        const moments = await ctx.db
+            .query("viralMoments")
+            .withIndex("by_sermon", (q) => q.eq("sermonId", args.sermonId))
+            .collect();
+        for (const moment of moments) {
+            await ctx.db.delete(moment._id);
+        }
+
+        // Delete all related generated content
+        const generatedContent = await ctx.db
+            .query("generatedContent")
+            .withIndex("by_sermon_type", (q) => q.eq("sermonId", args.sermonId))
+            .collect();
+        for (const content of generatedContent) {
+            await ctx.db.delete(content._id);
+        }
+
+        // Delete all related transcripts
+        const transcripts = await ctx.db
+            .query("transcripts")
+            .withIndex("by_sermon", (q) => q.eq("sermonId", args.sermonId))
+            .collect();
+        for (const transcript of transcripts) {
+            await ctx.db.delete(transcript._id);
+        }
+
+        // Delete all related jobs
+        const jobs = await ctx.db
+            .query("jobs")
+            .withIndex("by_sermon", (q) => q.eq("sermonId", args.sermonId))
+            .collect();
+        for (const job of jobs) {
+            await ctx.db.delete(job._id);
+        }
+
+        // Delete the sermon itself
+        await ctx.db.delete(args.sermonId);
+    },
+});
+
+// Cancel/stop an ongoing sermon process (upload or processing)
+export const cancel = mutation({
+    args: { sermonId: v.id("sermons") },
+    handler: async (ctx, args) => {
+        const sermon = await ctx.db.get(args.sermonId);
+        if (!sermon) {
+            throw new Error("Sermon not found");
+        }
+
+        // Update sermon status to cancelled
+        await ctx.db.patch(args.sermonId, { status: "cancelled" });
+
+        // Cancel any running jobs for this sermon
+        const jobs = await ctx.db
+            .query("jobs")
+            .withIndex("by_sermon", (q) => q.eq("sermonId", args.sermonId))
+            .collect();
+
+        for (const job of jobs) {
+            if (job.status === "running" || job.status === "queued") {
+                await ctx.db.patch(job._id, {
+                    status: "cancelled",
+                    completedAt: Date.now(),
+                });
+            }
+        }
+    },
+});
+
+// Get sermons by status
+export const getByOrgAndStatus = query({
+    args: {
+        organizationId: v.id("organizations"),
+        status: v.optional(v.union(
+            v.literal("uploading"),
+            v.literal("processing"),
+            v.literal("ready"),
+            v.literal("failed"),
+            v.literal("cancelled")
+        )),
+    },
+    handler: async (ctx, args) => {
+        if (args.status) {
+            const status = args.status;
+            return await ctx.db
+                .query("sermons")
+                .withIndex("by_status", (q) =>
+                    q.eq("organizationId", args.organizationId).eq("status", status)
+                )
+                .order("desc")
+                .collect();
+        }
+
+        return await ctx.db
+            .query("sermons")
+            .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+            .order("desc")
+            .collect();
     },
 });

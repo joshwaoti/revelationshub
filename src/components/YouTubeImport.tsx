@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -8,11 +8,8 @@ import {
     Download,
     Upload,
     Loader2,
-    Check,
     AlertCircle,
     Clock,
-    Play,
-    Pause,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -156,7 +153,7 @@ export function YouTubeImport({ onVideoUploaded }: YouTubeImportProps) {
             };
 
             xhr.send();
-        } catch (err) {
+        } catch {
             toast.error("Download failed");
             setDownloading(false);
         }

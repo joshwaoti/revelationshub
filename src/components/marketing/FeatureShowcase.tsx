@@ -64,6 +64,10 @@ const features = [
     },
 ];
 
+const podcastWaveHeights = Array.from({ length: 40 }, (_, i) =>
+    8 + ((i * 11) % 21)
+);
+
 // Animation for mockup content
 const contentVariants = {
     initial: { opacity: 0, scale: 0.95, filter: "blur(4px)" },
@@ -456,7 +460,7 @@ function PodcastDemo() {
                             className="w-1 bg-[var(--color-primary)] rounded-full"
                             animate={{
                                 height: isPlaying
-                                    ? `${8 + Math.random() * 20}px`
+                                    ? `${podcastWaveHeights[i]}px`
                                     : "4px",
                             }}
                             transition={{ duration: 0.15 }}

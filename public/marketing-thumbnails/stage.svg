@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 675" role="img" aria-labelledby="title desc">
+  <title id="title">African pastor preaching on a church stage</title>
+  <desc id="desc">Illustrative sermon thumbnail with a Black pastor, congregation silhouettes, and warm stage lighting.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#12081f"/>
+      <stop offset="0.48" stop-color="#301a4b"/>
+      <stop offset="1" stop-color="#0b3941"/>
+    </linearGradient>
+    <radialGradient id="light" cx="50%" cy="8%" r="72%">
+      <stop offset="0" stop-color="#ffeaec" stop-opacity=".72"/>
+      <stop offset=".42" stop-color="#f39a9d" stop-opacity=".22"/>
+      <stop offset="1" stop-color="#12081f" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="1200" height="675" fill="url(#bg)"/>
+  <rect width="1200" height="675" fill="url(#light)"/>
+  <path d="M0 525c160-70 330-64 505-22 207 49 438 37 695-64v236H0z" fill="#05030a" opacity=".7"/>
+  <g opacity=".7">
+    <circle cx="130" cy="538" r="34" fill="#2b1711"/><rect x="96" y="570" width="68" height="90" rx="30" fill="#3f6c51"/>
+    <circle cx="1010" cy="520" r="36" fill="#4b2b1f"/><rect x="973" y="553" width="74" height="105" rx="32" fill="#6db1bf"/>
+    <circle cx="1080" cy="555" r="24" fill="#2d1912"/><rect x="1056" y="579" width="48" height="65" rx="22" fill="#f39a9d"/>
+  </g>
+  <g transform="translate(515 145)">
+    <ellipse cx="92" cy="412" rx="210" ry="46" fill="#05030a" opacity=".34"/>
+    <rect x="25" y="165" width="134" height="238" rx="62" fill="#ffeaec"/>
+    <path d="M15 220c42-46 112-49 154-4l42 191H-21z" fill="#6db1bf"/>
+    <circle cx="92" cy="95" r="58" fill="#4e2b1d"/>
+    <path d="M39 91c18-69 94-76 126-30 6 22 1 42-10 57-8-43-35-63-78-55-18 3-31 13-38 28z" fill="#16100e"/>
+    <rect x="76" y="48" width="40" height="11" rx="5" fill="#16100e" opacity=".55"/>
+    <path d="M-110 242c72-8 139-2 198 20l-12 42c-63-14-126-14-190-3z" fill="#ffeaec"/>
+    <rect x="190" y="205" width="162" height="18" rx="9" transform="rotate(-18 190 205)" fill="#ffeaec"/>
+    <rect x="324" y="157" width="70" height="22" rx="11" transform="rotate(-18 324 157)" fill="#141018"/>
+  </g>
+  <g font-family="Arial, sans-serif" font-weight="900" fill="#fff">
+    <text x="62" y="104" font-size="54">HOPE HAS</text>
+    <text x="62" y="164" font-size="54" fill="#f39a9d">A VOICE</text>
+  </g>
+</svg>

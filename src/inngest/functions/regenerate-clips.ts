@@ -1,4 +1,5 @@
 import { inngest } from "../client";
+import { generateText } from "@/lib/server/llm";
 
 // Regenerate clips for a sermon based on text description or time range
 // This function calls the Modal API to generate new clips, appending to existing ones
@@ -25,6 +26,30 @@ export const regenerateClips = inngest.createFunction(
             const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL;
             if (!convexUrl) throw new Error("Convex URL not configured");
 
+            if (!organizationId) {
+                throw new Error("organizationId is required");
+            }
+
+            const orgResponse = await fetch(`${convexUrl}/api/query`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    path: "organizations:getByClerkId",
+                    args: { clerkOrgId: organizationId },
+                    format: "json",
+                }),
+            });
+
+            if (!orgResponse.ok) {
+                throw new Error("Failed to fetch organization");
+            }
+
+            const orgResult = await orgResponse.json();
+            const org = orgResult.value || orgResult;
+            if (!org) {
+                throw new Error("Organization not found");
+            }
+
             // Get sermon
             const sermonResponse = await fetch(`${convexUrl}/api/query`, {
                 method: "POST",
@@ -45,6 +70,10 @@ export const regenerateClips = inngest.createFunction(
 
             if (!sermon) {
                 throw new Error("Sermon not found");
+            }
+
+            if (sermon.organizationId !== org._id) {
+                throw new Error("Sermon does not belong to this organization");
             }
 
             // Get transcript
@@ -131,7 +160,6 @@ export const regenerateClips = inngest.createFunction(
             const matchResult = await step.run("find-transcript-match", async () => {
                 // Use simple text matching to find the approximate location
                 // In a production system, you might want to use an LLM for smarter matching
-                const fullText = transcript.fullText.toLowerCase();
                 const searchText = clipDescription.toLowerCase();
 
                 // Split search text into key phrases
@@ -141,7 +169,7 @@ export const regenerateClips = inngest.createFunction(
                 const segments = transcript.segments || [];
                 let bestMatchStart = 0;
                 let bestMatchScore = 0;
-                let windowSize = 50; // Look at windows of ~50 words
+                const windowSize = 50; // Look at windows of ~50 words
 
                 for (let i = 0; i < segments.length; i++) {
                     // Get a window of segments
@@ -195,17 +223,6 @@ export const regenerateClips = inngest.createFunction(
             } else {
                 // Fallback: Use Gemini to find the best matching section
                 const geminiMatch = await step.run("gemini-transcript-match", async () => {
-                    const geminiApiKey = process.env.GEMINI_API_KEY;
-                    if (!geminiApiKey) {
-                        console.log("Gemini API key not available for smart matching");
-                        return null;
-                    }
-
-                    // Import dynamically to avoid issues
-                    const { GoogleGenerativeAI } = await import("@google/generative-ai");
-                    const genAI = new GoogleGenerativeAI(geminiApiKey);
-                    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-
                     const prompt = `You are analyzing a sermon transcript to find a specific section.
 
 USER REQUEST: "${clipDescription}"
@@ -223,8 +240,7 @@ If you cannot find a relevant section, return:
 Return ONLY the JSON, no other text.`;
 
                     try {
-                        const result = await model.generateContent(prompt);
-                        const responseText = result.response.text();
+                        const responseText = await generateText(prompt, { task: "transcript-smart-match" });
 
                         // Parse the JSON response
                         let cleanText = responseText.trim();

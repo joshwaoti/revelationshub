@@ -39,9 +39,11 @@ export function ScrollAnimationWrapper({
 
         if (prefersReducedMotion) return;
 
+        let ctx: gsap.Context;
+
         // Delay scroll calculations for DOM stabilization (GSAP best practice)
         const initTimeout = setTimeout(() => {
-            const ctx = gsap.context(() => {
+            ctx = gsap.context(() => {
                 const animatableChildren =
                     container.querySelectorAll("[data-animate]");
                 const targets =
@@ -78,17 +80,13 @@ export function ScrollAnimationWrapper({
                     },
                 });
             }, container);
-
-            return () => ctx.revert();
         }, 100);
 
         return () => {
             clearTimeout(initTimeout);
-            ScrollTrigger.getAll().forEach((trigger) => {
-                if (trigger.trigger === container) {
-                    trigger.kill();
-                }
-            });
+            if (ctx) {
+                ctx.revert();
+            }
         };
     }, [animation, delay, duration, stagger]);
 

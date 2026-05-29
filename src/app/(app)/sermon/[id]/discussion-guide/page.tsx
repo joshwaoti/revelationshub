@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useState } from "react";
+import { use } from "react";
 import { useQuery } from "convex/react";
 import { api } from "../../../../../../convex/_generated/api";
 import { Id } from "../../../../../../convex/_generated/dataModel";
@@ -16,14 +16,14 @@ export default function DiscussionGuidePage({ params }: { params: Promise<{ id: 
     // Fetch sermon
     const sermon = useQuery(api.sermons.getById, { sermonId });
 
-    // Fetch generated content
-    const generatedContent = useQuery(
-        api.generatedContent.getBySermon,
-        sermon?._id ? { sermonId: sermon._id } : "skip"
+    // Fetch only discussion guide content for this page.
+    const discussionGuideContent = useQuery(
+        api.generatedContent.getBySermonAndType,
+        sermon?._id ? { sermonId: sermon._id, type: "discussion_guide" } : "skip"
     );
 
-    const discussionGuide = generatedContent?.find(c => c.type === "discussion_guide" && c.status === "ready");
-    const isProcessing = generatedContent?.some(c => c.type === "discussion_guide" && c.status === "processing");
+    const discussionGuide = discussionGuideContent?.find(c => c.status === "ready");
+    const isProcessing = discussionGuideContent?.some(c => c.status === "processing");
 
     // Generate content hook
     const { isGenerating, generateContent } = useGenerateContent();
@@ -44,7 +44,7 @@ export default function DiscussionGuidePage({ params }: { params: Promise<{ id: 
     };
 
     // Loading state
-    if (sermon === undefined || generatedContent === undefined) {
+    if (sermon === undefined || discussionGuideContent === undefined) {
         return (
             <div className="flex items-center justify-center min-h-[60vh]">
                 <Loader2 className="h-8 w-8 animate-spin text-[var(--color-primary)]" />

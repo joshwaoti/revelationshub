@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
+import { getAuthorizedClipByS3Key } from "@/lib/server/resource-auth";
 
 // This endpoint initiates a video export with captions
 // The actual rendering is done by the Python backend with FFmpeg
@@ -37,8 +38,8 @@ export interface ExportResponse {
 
 export async function POST(req: NextRequest): Promise<NextResponse<ExportResponse>> {
     try {
-        const { userId } = await auth();
-        if (!userId) {
+        const { userId, orgId } = await auth();
+        if (!userId || !orgId) {
             return NextResponse.json(
                 { success: false, error: "Unauthorized" },
                 { status: 401 }
@@ -59,6 +60,13 @@ export async function POST(req: NextRequest): Promise<NextResponse<ExportRespons
             return NextResponse.json(
                 { success: false, error: "captions are required" },
                 { status: 400 }
+            );
+        }
+
+        if (!(await getAuthorizedClipByS3Key(body.clipS3Key, orgId))) {
+            return NextResponse.json(
+                { success: false, error: "Clip not found" },
+                { status: 404 }
             );
         }
 

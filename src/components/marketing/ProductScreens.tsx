@@ -1,27 +1,18 @@
 import {
     BookOpen,
-    CheckCircle2,
     FileText,
-    Image,
+    Image as ImageIcon,
     LayoutGrid,
     MessageSquare,
     Mic,
-    Palette,
     Play,
     Quote,
     Sparkles,
-    Upload,
     Wand2,
 } from "lucide-react";
 import type { ReactNode } from "react";
-import { LogoMark } from "@/components/brand/RevelationsLogo";
+import NextImage from "next/image";
 import { cn } from "@/lib/utils";
-
-const clipCards = [
-    { title: "Grace when pressure rises", time: "12:08", score: "94%" },
-    { title: "The moment hope becomes action", time: "24:31", score: "91%" },
-    { title: "A prayer for the anxious heart", time: "38:44", score: "88%" },
-];
 
 const transcriptLines = [
     ["00:12", "The promise is not that the storm disappears."],
@@ -31,7 +22,7 @@ const transcriptLines = [
 
 function ScreenShell({ children, className }: { children: ReactNode; className?: string }) {
     return (
-        <div className={cn("h-full min-w-0 overflow-hidden bg-[var(--color-base)] p-4 text-[var(--color-text-light)]", className)}>
+        <div className={cn("h-full min-w-0 overflow-hidden bg-[var(--color-base)] p-4 text-[var(--color-text-light)] relative", className)}>
             {children}
         </div>
     );
@@ -45,14 +36,6 @@ function Panel({ children, className }: { children: ReactNode; className?: strin
     );
 }
 
-function MiniMetric({ label, value }: { label: string; value: string }) {
-    return (
-        <Panel>
-            <p className="text-[10px] uppercase text-[var(--color-text-muted)]">{label}</p>
-            <p className="mt-1 font-display text-lg font-semibold text-[var(--color-text-light)]">{value}</p>
-        </Panel>
-    );
-}
 
 export function PeopleThumbnail({
     className,
@@ -143,68 +126,17 @@ export function PeopleThumbnail({
 
 export function DashboardScreen() {
     return (
-        <ScreenShell>
-            <div className="mb-4 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                    <LogoMark className="h-7 w-7" />
-                    <div>
-                        <p className="font-display text-sm font-semibold">Sunday Service</p>
-                        <p className="text-[10px] text-[var(--color-text-muted)]">Ready for review</p>
-                    </div>
-                </div>
-                <div className="rounded-full bg-[var(--color-primary)]/15 px-3 py-1 text-[10px] font-medium text-[var(--color-primary)]">
-                    Live sync
-                </div>
-            </div>
-
-            <div className="grid h-[calc(100%-44px)] grid-cols-[1.25fr_0.75fr] gap-4">
-                <div className="space-y-4">
-                    <PeopleThumbnail className="aspect-video" variant="worship" />
-                    <div className="grid grid-cols-3 gap-3">
-                        <MiniMetric label="Clips" value="12" />
-                        <MiniMetric label="Transcript" value="8.4k" />
-                        <MiniMetric label="Assets" value="31" />
-                    </div>
-                    <Panel>
-                        <div className="mb-3 flex items-center justify-between">
-                            <p className="text-xs font-semibold">Top moments</p>
-                            <p className="text-[10px] text-[var(--color-secondary)]">Ranked by resonance</p>
-                        </div>
-                        <div className="space-y-2">
-                            {clipCards.map((clip) => (
-                                <div key={clip.title} className="flex items-center justify-between rounded-lg bg-[var(--color-base)]/60 px-3 py-2">
-                                    <div className="flex items-center gap-2">
-                                        <Wand2 className="h-3.5 w-3.5 text-[var(--color-primary)]" />
-                                        <div>
-                                            <p className="text-[11px] text-[var(--color-text-light)]">{clip.title}</p>
-                                            <p className="text-[10px] text-[var(--color-text-muted)]">{clip.time}</p>
-                                        </div>
-                                    </div>
-                                    <span className="text-[10px] text-[var(--color-secondary)]">{clip.score}</span>
-                                </div>
-                            ))}
-                        </div>
-                    </Panel>
-                </div>
-
-                <div className="space-y-3">
-                    {[
-                        { icon: Wand2, label: "Magic clips", value: "12 ready" },
-                        { icon: BookOpen, label: "Discussion guide", value: "Ready" },
-                        { icon: Quote, label: "Image quotes", value: "9 saved" },
-                        { icon: LayoutGrid, label: "Carousel", value: "6 slides" },
-                        { icon: FileText, label: "Blog draft", value: "Ready" },
-                    ].map((item) => (
-                        <Panel key={item.label}>
-                            <div className="mb-3 flex items-center justify-between">
-                                <item.icon className="h-4 w-4 text-[var(--color-primary)]" />
-                                <CheckCircle2 className="h-4 w-4 text-[var(--color-success)]" />
-                            </div>
-                            <p className="text-xs font-medium">{item.label}</p>
-                            <p className="mt-1 text-[10px] text-[var(--color-text-muted)]">{item.value}</p>
-                        </Panel>
-                    ))}
-                </div>
+        <ScreenShell className="p-0">
+            {/* Real App Screenshot Mockup with Fallback */}
+            <div className="relative w-full h-full min-h-[300px]">
+                <NextImage
+                    src="/mockups/dashboard.png"
+                    alt="RevelationsHub Sermon Workspace Dashboard Mockup"
+                    fill
+                    sizes="(max-width: 1200px) 100vw, 1200px"
+                    className="object-cover object-top"
+                    priority
+                />
             </div>
         </ScreenShell>
     );
@@ -212,40 +144,15 @@ export function DashboardScreen() {
 
 export function LibraryScreen() {
     return (
-        <ScreenShell>
-            <div className="mb-4 flex items-center justify-between">
-                <div>
-                    <p className="font-display text-lg font-bold">Sermon Library</p>
-                    <p className="text-xs text-[var(--color-text-muted)]">42 messages uploaded</p>
-                </div>
-                <button className="inline-flex items-center gap-2 rounded-lg bg-[var(--color-primary)] px-3 py-2 text-xs font-semibold text-[#301A4B]">
-                    <Upload className="h-3.5 w-3.5" />
-                    Upload Sermon
-                </button>
-            </div>
-            <div className="grid grid-cols-3 gap-3">
-                {[
-                    ["Finding Peace in Chaos", "stage"],
-                    ["Faith That Builds", "group"],
-                    ["Mercy at the Table", "worship"],
-                    ["The Quiet Courage", "outreach"],
-                    ["Prayer That Endures", "stage"],
-                    ["A House of Hope", "group"],
-                ].map(([title, variant], index) => (
-                    <Panel key={title} className="overflow-hidden p-0">
-                        <PeopleThumbnail className="aspect-video rounded-none" variant={variant as "stage" | "group" | "worship" | "outreach"} />
-                        <div className="p-3">
-                            <div className="mb-2 flex items-center justify-between">
-                                <span className="rounded-full bg-[var(--color-primary)]/15 px-2 py-0.5 text-[10px] font-medium text-[var(--color-primary)]">
-                                    {index < 4 ? "Ready" : "Processing"}
-                                </span>
-                                <span className="text-[10px] text-[var(--color-text-muted)]">42:15</span>
-                            </div>
-                            <p className="line-clamp-1 text-xs font-semibold">{title}</p>
-                            <p className="mt-1 text-[10px] text-[var(--color-text-muted)]">Pastor Michael</p>
-                        </div>
-                    </Panel>
-                ))}
+        <ScreenShell className="p-0">
+            <div className="relative w-full h-full min-h-[300px]">
+                <NextImage
+                    src="/mockups/library.png"
+                    alt="RevelationsHub Sermon Media Library Mockup"
+                    fill
+                    sizes="(max-width: 1200px) 100vw, 800px"
+                    className="object-cover object-top"
+                />
             </div>
         </ScreenShell>
     );
@@ -253,36 +160,15 @@ export function LibraryScreen() {
 
 export function ClipReviewScreen() {
     return (
-        <ScreenShell className="grid grid-cols-[0.82fr_1fr] gap-4">
-            <div className="space-y-2 overflow-hidden">
-                <div className="mb-3 flex items-center justify-between">
-                    <p className="text-xs font-semibold">Generated clips</p>
-                    <span className="rounded-full bg-[var(--color-primary)]/15 px-2 py-1 text-[10px] text-[var(--color-primary)]">12 ready</span>
-                </div>
-                {clipCards.map((clip, index) => (
-                    <div
-                        key={clip.title}
-                        className={cn(
-                            "rounded-xl border p-3",
-                            index === 0
-                                ? "border-[var(--color-primary)]/60 bg-[var(--color-primary)]/10"
-                                : "border-[var(--color-border)] bg-[var(--color-surface)]"
-                        )}
-                    >
-                        <p className="text-xs font-medium">{clip.title}</p>
-                        <div className="mt-2 flex items-center gap-3 text-[10px] text-[var(--color-text-muted)]">
-                            <span>{clip.time}</span>
-                            <span>0:41</span>
-                            <span>{clip.score}</span>
-                        </div>
-                    </div>
-                ))}
-                <button className="mt-3 w-full rounded-lg border border-[var(--color-secondary)]/40 py-2 text-xs text-[var(--color-secondary)]">
-                    Generate more
-                </button>
-            </div>
-            <div className="flex items-center justify-center rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
-                <PhoneClipPreview />
+        <ScreenShell className="p-0">
+            <div className="relative w-full h-full min-h-[300px]">
+                <NextImage
+                    src="/mockups/clip-review.png"
+                    alt="RevelationsHub Clip Review Dashboard Mockup"
+                    fill
+                    sizes="(max-width: 1200px) 100vw, 800px"
+                    className="object-cover object-top"
+                />
             </div>
         </ScreenShell>
     );
@@ -332,33 +218,15 @@ export function TranscriptScreen() {
 
 export function BrandKitScreen() {
     return (
-        <ScreenShell>
-            <div className="mb-4 flex items-center justify-between">
-                <div>
-                    <p className="font-display text-lg font-bold">Brand Kit</p>
-                    <p className="text-xs text-[var(--color-text-muted)]">Every export stays on-brand</p>
-                </div>
-                <Palette className="h-5 w-5 text-[var(--color-secondary)]" />
-            </div>
-            <div className="grid grid-cols-[0.85fr_1fr] gap-4">
-                <div className="space-y-3">
-                    {["#6DB1BF", "#F39A9D", "#3F6C51"].map((color) => (
-                        <Panel key={color} className="flex items-center gap-3">
-                            <span className="h-9 w-9 rounded-lg border border-[var(--color-border)]" style={{ backgroundColor: color }} />
-                            <span className="font-mono text-xs text-[var(--color-text-muted)]">{color}</span>
-                        </Panel>
-                    ))}
-                    <Panel>
-                        <p className="text-xs text-[var(--color-text-muted)]">Heading font</p>
-                        <p className="font-display text-xl font-bold">Outfit</p>
-                    </Panel>
-                </div>
-                <div className="relative overflow-hidden rounded-2xl bg-[linear-gradient(135deg,#6DB1BF,#F39A9D)] p-4">
-                    <PeopleThumbnail className="absolute inset-x-0 bottom-0 h-24 rounded-none opacity-80" variant="group" />
-                    <LogoMark className="relative mb-8 h-9 w-9" />
-                    <p className="relative mt-10 text-2xl font-black leading-tight text-white">Hope has a voice this week.</p>
-                    <p className="relative mt-3 text-xs font-medium text-white/80">Grace Community Church</p>
-                </div>
+        <ScreenShell className="p-0">
+            <div className="relative w-full h-full min-h-[300px]">
+                <NextImage
+                    src="/mockups/brand-kit.png"
+                    alt="RevelationsHub Brand Kit Manager Mockup"
+                    fill
+                    sizes="(max-width: 1200px) 100vw, 800px"
+                    className="object-cover object-top"
+                />
             </div>
         </ScreenShell>
     );
@@ -372,7 +240,7 @@ export function ContentEngineScreen() {
         { icon: MessageSquare, label: "Discussion", count: "1" },
         { icon: BookOpen, label: "Devotional", count: "5 days" },
         { icon: Mic, label: "Podcast", count: "42 min" },
-        { icon: Image, label: "Graphics", count: "9" },
+        { icon: ImageIcon, label: "Graphics", count: "9" },
         { icon: FileText, label: "Blog", count: "Draft" },
     ];
 

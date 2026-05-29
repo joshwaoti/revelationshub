@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 675" role="img" aria-labelledby="title desc">
+  <title id="title">African small group discussion</title>
+  <desc id="desc">Illustrative thumbnail of Black ministry team members gathered around a table with phones and notes.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1"><stop offset="0" stop-color="#0b3941"/><stop offset=".55" stop-color="#301a4b"/><stop offset="1" stop-color="#12081f"/></linearGradient>
+  </defs>
+  <rect width="1200" height="675" fill="url(#bg)"/>
+  <circle cx="1040" cy="120" r="220" fill="#6db1bf" opacity=".2"/>
+  <circle cx="155" cy="540" r="260" fill="#f39a9d" opacity=".16"/>
+  <ellipse cx="600" cy="542" rx="380" ry="86" fill="#05030a" opacity=".38"/>
+  <rect x="320" y="430" width="560" height="120" rx="42" fill="#ffeaec" opacity=".92"/>
+  <rect x="520" y="448" width="160" height="82" rx="18" fill="#12081f" opacity=".88"/>
+  <rect x="704" y="458" width="96" height="56" rx="14" fill="#6db1bf"/>
+  <g>
+    <circle cx="320" cy="282" r="54" fill="#3a2118"/><path d="M244 354c44-74 117-76 160 0v126H244z" fill="#6db1bf"/>
+    <circle cx="490" cy="238" r="58" fill="#563324"/><path d="M416 320c48-72 120-75 166 0v135H416z" fill="#f39a9d"/>
+    <circle cx="675" cy="242" r="56" fill="#2e1b14"/><path d="M602 320c43-75 123-75 168 0v135H602z" fill="#3f6c51"/>
+    <circle cx="860" cy="286" r="52" fill="#4e2b1d"/><path d="M790 358c39-70 112-72 150 0v122H790z" fill="#ffeaec"/>
+  </g>
+  <text x="70" y="118" font-family="Arial, sans-serif" font-size="52" font-weight="900" fill="#fff">DISCUSSION</text>
+  <text x="70" y="174" font-family="Arial, sans-serif" font-size="52" font-weight="900" fill="#6db1bf">GUIDE READY</text>
+</svg>

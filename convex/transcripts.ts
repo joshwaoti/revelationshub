@@ -43,3 +43,28 @@ export const getBySermon = query({
             .first();
     },
 });
+
+// Lightweight transcript metadata for dashboard/status screens.
+export const getSummaryBySermon = query({
+    args: { sermonId: v.id("sermons") },
+    handler: async (ctx, args) => {
+        const transcript = await ctx.db
+            .query("transcripts")
+            .withIndex("by_sermon", (q) => q.eq("sermonId", args.sermonId))
+            .first();
+
+        if (!transcript) {
+            return {
+                exists: false,
+                segmentCount: 0,
+                textLength: 0,
+            };
+        }
+
+        return {
+            exists: true,
+            segmentCount: transcript.segments.length,
+            textLength: transcript.fullText.length,
+        };
+    },
+});

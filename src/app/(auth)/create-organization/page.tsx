@@ -1,5 +1,6 @@
 import { CreateOrganization } from "@clerk/nextjs";
 import Link from "next/link";
+import { LogoLockup } from "@/components/brand/RevelationsLogo";
 
 export default function CreateOrganizationPage() {
     return (
@@ -11,10 +12,7 @@ export default function CreateOrganizationPage() {
             <div className="relative z-10 w-full max-w-lg">
                 {/* Logo */}
                 <Link href="/" className="flex items-center justify-center gap-2 mb-4">
-                    <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-secondary)]" />
-                    <span className="font-display text-2xl font-bold text-[var(--color-text-light)]">
-                        RevelationsHub
-                    </span>
+                    <LogoLockup markClassName="h-10 w-10" textClassName="text-2xl" />
                 </Link>
 
                 <div className="text-center mb-6">

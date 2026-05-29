@@ -10,6 +10,21 @@ import { RefreshCw, Download, Share2, Calendar, Heart, Loader2, Sparkles, Chevro
 import Link from "next/link";
 import { useGenerateContent } from "@/hooks/use-generate-content";
 
+type DevotionalDay = {
+    day?: number;
+    dayName?: string;
+    title?: string;
+    scripture?: string;
+    reflection?: string;
+    prayerFocus?: string;
+};
+
+type DevotionalContent = {
+    title?: string;
+    subtitle?: string;
+    days?: DevotionalDay[];
+};
+
 export default function DevotionalsPage({ params }: { params: Promise<{ id: string }> }) {
     const resolvedParams = use(params);
     const sermonId = resolvedParams.id as Id<"sermons">;
@@ -17,14 +32,14 @@ export default function DevotionalsPage({ params }: { params: Promise<{ id: stri
     // Fetch sermon
     const sermon = useQuery(api.sermons.getById, { sermonId });
 
-    // Fetch generated content
-    const generatedContent = useQuery(
-        api.generatedContent.getBySermon,
-        sermon?._id ? { sermonId: sermon._id } : "skip"
+    // Fetch only devotional content for this page.
+    const devotionalContent = useQuery(
+        api.generatedContent.getBySermonAndType,
+        sermon?._id ? { sermonId: sermon._id, type: "devotional" } : "skip"
     );
 
-    const devotional = generatedContent?.find(c => c.type === "devotional" && c.status === "ready");
-    const isProcessing = generatedContent?.some(c => c.type === "devotional" && c.status === "processing");
+    const devotional = devotionalContent?.find(c => c.status === "ready");
+    const isProcessing = devotionalContent?.some(c => c.status === "processing");
 
     // Generate content hook
     const { isGenerating, generateContent } = useGenerateContent();
@@ -36,7 +51,7 @@ export default function DevotionalsPage({ params }: { params: Promise<{ id: stri
     };
 
     // Parse content
-    const parseContent = (content: string) => {
+    const parseContent = (content: string): DevotionalContent | null => {
         try {
             return JSON.parse(content);
         } catch {
@@ -45,7 +60,7 @@ export default function DevotionalsPage({ params }: { params: Promise<{ id: stri
     };
 
     // Loading state
-    if (sermon === undefined || generatedContent === undefined) {
+    if (sermon === undefined || devotionalContent === undefined) {
         return (
             <div className="flex items-center justify-center min-h-[60vh]">
                 <Loader2 className="h-8 w-8 animate-spin text-[var(--color-primary)]" />
@@ -158,7 +173,7 @@ export default function DevotionalsPage({ params }: { params: Promise<{ id: stri
 
                         {/* Devotional Days */}
                         <div className="space-y-6">
-                            {data.days?.map((day: any, index: number) => (
+                            {data.days?.map((day, index) => (
                                 <div key={index} className="group">
                                     <div className="flex items-start gap-4">
                                         <div className="flex flex-col items-center shrink-0">

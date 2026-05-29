@@ -11,6 +11,14 @@ const s3Client = new S3Client({
     },
 });
 
+const MAX_UPLOAD_BYTES = 2 * 1024 * 1024 * 1024;
+const ALLOWED_VIDEO_TYPES = new Set([
+    "video/mp4",
+    "video/quicktime",
+    "video/webm",
+    "video/x-matroska",
+]);
+
 export async function POST(req: NextRequest) {
     try {
         // Verify authentication
@@ -22,11 +30,25 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        const { filename, contentType } = await req.json();
+        const { filename, contentType, fileSize } = await req.json();
 
         if (!filename || !contentType) {
             return NextResponse.json(
                 { error: "Missing filename or contentType" },
+                { status: 400 }
+            );
+        }
+
+        if (!ALLOWED_VIDEO_TYPES.has(contentType)) {
+            return NextResponse.json(
+                { error: "Unsupported video type" },
+                { status: 400 }
+            );
+        }
+
+        if (typeof fileSize === "number" && fileSize > MAX_UPLOAD_BYTES) {
+            return NextResponse.json(
+                { error: "File size must be under 2GB" },
                 { status: 400 }
             );
         }
@@ -43,6 +65,7 @@ export async function POST(req: NextRequest) {
             Bucket: bucket,
             Key: key,
             ContentType: contentType,
+            ContentLength: typeof fileSize === "number" ? fileSize : undefined,
         });
 
         const presignedUrl = await getSignedUrl(s3Client, command, {

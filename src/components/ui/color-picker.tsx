@@ -10,25 +10,12 @@ interface ColorPickerProps {
 }
 
 export function ColorPicker({ value, onChange, label }: ColorPickerProps) {
-    const [isOpen, setIsOpen] = useState(false);
     const [inputValue, setInputValue] = useState(value);
-    const containerRef = useRef<HTMLDivElement>(null);
     const colorInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
         setInputValue(value);
     }, [value]);
-
-    useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => {
-            if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-                setIsOpen(false);
-            }
-        };
-
-        document.addEventListener("mousedown", handleClickOutside);
-        return () => document.removeEventListener("mousedown", handleClickOutside);
-    }, []);
 
     const handleColorBoxClick = () => {
         colorInputRef.current?.click();
@@ -58,7 +45,7 @@ export function ColorPicker({ value, onChange, label }: ColorPickerProps) {
     };
 
     return (
-        <div ref={containerRef}>
+        <div>
             {label && (
                 <label className="block text-xs text-[var(--color-text-muted)] mb-1">
                     {label}

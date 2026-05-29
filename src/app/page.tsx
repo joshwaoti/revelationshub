@@ -1,15 +1,22 @@
 import Link from "next/link";
 import {
   ArrowRight,
-  ChevronRight,
   FileText,
   Layers,
-  Play,
-  ShieldCheck,
   Upload,
-  Users,
   Wand2,
   Zap,
+  Church,
+  Camera,
+  Smartphone,
+  Book,
+  Key,
+  Cloud,
+  Database,
+  Cpu,
+  CreditCard,
+  Sparkles,
+  Palette
 } from "lucide-react";
 import { Header } from "@/components/marketing/Header";
 import { Button } from "@/components/ui/button";
@@ -18,7 +25,11 @@ import { LogoLockup, LogoMark } from "@/components/brand/RevelationsLogo";
 import { MacBookMockup } from "@/components/marketing/DeviceMockups";
 import { BrandKitScreen } from "@/components/marketing/ProductScreens";
 import { ScrollProductTour } from "@/components/marketing/LandingMotion";
-import { HeroMotionStage } from "@/components/marketing/HeroMotionStage";
+import { HeroAnimated } from "@/components/marketing/HeroAnimated";
+import { ScrollReveal } from "@/components/animations/ScrollReveal";
+import { ParallaxLayer } from "@/components/animations/ParallaxLayer";
+import { FeatureShowcase } from "@/components/marketing/FeatureShowcase";
+import { FaqAccordion } from "@/components/marketing/FaqAccordion";
 
 const workflow = [
   {
@@ -43,32 +54,40 @@ const workflow = [
   },
 ];
 
-const teams = [
+const teamRolesWithIcons = [
   {
     role: "Pastors",
     value: "Keep the message active after Sunday without adding another production meeting.",
+    icon: Church,
+    gradient: "from-blue-500/10 to-indigo-500/10 text-indigo-400 dark:text-indigo-300 border-indigo-500/20",
   },
   {
     role: "Media directors",
     value: "Review ranked clips, caption styles, and export-ready assets in one focused workspace.",
+    icon: Camera,
+    gradient: "from-pink-500/10 to-purple-500/10 text-purple-400 dark:text-purple-300 border-purple-500/20",
   },
   {
     role: "Communications teams",
     value: "Fill the weekly content calendar with quotes, carousels, blogs, and short videos.",
+    icon: Smartphone,
+    gradient: "from-amber-500/10 to-orange-500/10 text-amber-400 dark:text-amber-300 border-amber-500/20",
   },
   {
     role: "Small group leaders",
     value: "Turn each message into questions, devotionals, and discussion starters quickly.",
+    icon: Book,
+    gradient: "from-emerald-500/10 to-teal-500/10 text-emerald-400 dark:text-emerald-300 border-emerald-500/20",
   },
 ];
 
-const operations = [
-  "Clerk organizations keep each ministry team separated and secure.",
-  "S3 stores source files and rendered media outside the web app bundle.",
-  "Convex live data keeps upload, processing, ready, failed, and cancelled states fresh.",
-  "Inngest coordinates long-running jobs so the UI stays responsive.",
-  "Modal GPU workers handle transcription, framing, captions, and exports.",
-  "Paystack billing maps subscriptions and credits to the right ministry plan.",
+const operationsWithIcons = [
+  { text: "Clerk organizations keep each ministry team separated and secure.", icon: Key },
+  { text: "S3 stores source files and rendered media outside the web app bundle.", icon: Cloud },
+  { text: "Convex live data keeps upload, processing, ready, failed, and cancelled states fresh.", icon: Database },
+  { text: "Inngest coordinates long-running jobs so the UI stays responsive.", icon: Cpu },
+  { text: "Modal GPU workers handle transcription, framing, captions, and exports.", icon: Zap },
+  { text: "Paystack billing maps subscriptions and credits to the right ministry plan.", icon: CreditCard },
 ];
 
 const faqs = [
@@ -97,12 +116,36 @@ const footerGroups = [
 ];
 
 export default function HomePage() {
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "RevelationsHub",
+    "applicationCategory": "MultimediaApplication",
+    "operatingSystem": "All",
+    "description": "Transform sermons into accurate clips, modern captions, discussion guides, devotionals, quote graphics, carousels, blogs, and podcast assets. Built for churches.",
+    "offers": {
+      "@type": "Offer",
+      "price": "0.00",
+      "priceCurrency": "USD"
+    },
+    "publisher": {
+      "@type": "Organization",
+      "name": "RevelationsHub",
+      "url": "https://revelationshub.com"
+    }
+  };
+
   return (
     <main className="min-h-screen bg-[var(--color-base)] text-[var(--color-text-light)]">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <Header />
-      <HeroSection />
+      <HeroAnimated />
       <WorkflowSection />
       <ScrollProductTour />
+      <FeatureShowcase />
       <TeamSection />
       <BrandSection />
       <OperationsSection />
@@ -112,66 +155,15 @@ export default function HomePage() {
   );
 }
 
-function HeroSection() {
-  return (
-    <section className="relative overflow-hidden px-4 pb-12 pt-24 sm:px-6 sm:pb-16 sm:pt-28">
-      <div className="absolute inset-0 landing-grid opacity-45" />
-      <div className="absolute inset-0 bg-[linear-gradient(140deg,var(--color-primary)_0%,transparent_20%,transparent_68%,var(--color-secondary)_100%)] opacity-[0.12]" />
-
-      <div className="relative mx-auto max-w-7xl">
-        <div className="mx-auto max-w-4xl text-center">
-          <Badge className="mb-5 border border-[var(--color-primary)]/30 bg-[var(--color-primary)]/10 text-[var(--color-primary)]">
-            Ministry operating system
-          </Badge>
-          <h1 className="text-balance font-display text-4xl font-bold leading-[1.06] sm:text-6xl lg:text-7xl">
-            Your Sunday message. Monday&apos;s movement.
-          </h1>
-          <p className="mx-auto mt-5 max-w-2xl text-pretty text-base leading-7 text-[var(--color-text-muted)] sm:text-lg sm:leading-8">
-            Turn one sermon into accurate clips, modern captions, discussion guides, devotionals, quote graphics, carousels, blog posts, and podcast assets.
-          </p>
-          <div className="mx-auto mt-8 flex max-w-sm flex-col gap-3 sm:max-w-none sm:flex-row sm:justify-center">
-            <Link href="/sign-up" className="block">
-              <Button size="xl" className="group w-full sm:w-auto">
-                Start Free Trial
-                <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
-              </Button>
-            </Link>
-            <Link href="#tour" className="block">
-              <Button size="xl" variant="outline" className="w-full sm:w-auto">
-                <Play className="h-5 w-5" />
-                Watch Product Tour
-              </Button>
-            </Link>
-          </div>
-        </div>
-
-        <div className="relative mx-auto mt-10 max-w-6xl md:mt-9">
-          <HeroMotionStage />
-
-          <div className="mx-auto mt-8 grid max-w-4xl gap-3 sm:grid-cols-3 md:hidden">
-            {[
-              ["Source", "Upload or YouTube"],
-              ["Output", "Clips and content"],
-              ["Review", "Team-ready workspace"],
-            ].map(([label, value]) => (
-              <div key={label} className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)]/80 p-4 shadow-sm">
-                <p className="text-xs font-semibold uppercase text-[var(--color-secondary)]">{label}</p>
-                <p className="mt-2 font-semibold text-[var(--color-text-light)]">{value}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
 function WorkflowSection() {
   return (
-    <section id="workflow" className="bg-[var(--color-surface)] py-20 sm:py-28">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6">
+    <section id="workflow" className="relative bg-[var(--color-surface)] py-20 sm:py-28 overflow-hidden">
+      {/* Decorative background grids */}
+      <div className="absolute inset-0 landing-grid opacity-15 pointer-events-none" />
+      
+      <ScrollReveal animation="fadeUp" className="relative mx-auto max-w-7xl px-4 sm:px-6">
         <div className="max-w-3xl">
-          <p className="text-xs font-semibold uppercase text-[var(--color-secondary)]">Workflow</p>
+          <p className="text-xs font-semibold uppercase tracking-wider text-[var(--color-secondary)]">Workflow</p>
           <h2 className="mt-4 text-balance font-display text-3xl font-bold leading-tight sm:text-5xl">
             From full-length sermon to a complete publishing queue.
           </h2>
@@ -179,80 +171,147 @@ function WorkflowSection() {
             RevelationsHub follows the sermon from ingestion to transcript, clip review, written assets, and final export.
           </p>
         </div>
-        <div className="mt-10 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {workflow.map((item) => (
-            <div key={item.title} className="neon-card rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5 shadow-sm transition-transform duration-200 hover:-translate-y-1">
-              <div className="mb-8 flex h-12 w-12 items-center justify-center rounded-xl bg-[var(--color-primary)]/15 text-[var(--color-primary)]">
-                <item.icon className="h-5 w-5" />
+
+        {/* Step Cards with dotted line connector */}
+        <div className="relative mt-16 grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+          {/* Connector line for large screens */}
+          <div className="absolute top-[48px] left-[12%] right-[12%] h-[2px] bg-gradient-to-r from-[var(--color-primary)]/40 via-[var(--color-secondary)]/40 to-[var(--color-primary)]/40 border-t border-dashed border-[var(--color-primary)]/40 hidden lg:block pointer-events-none z-0" />
+
+          {workflow.map((item, index) => (
+            <div
+              key={item.title}
+              data-animate
+              className="gradient-border-card group shadow-sm hover:shadow-lg transition-all duration-300 z-10"
+            >
+              <div className="gradient-border-card-inner p-6 flex flex-col h-full justify-between min-h-[260px]">
+                <div>
+                  <div className="mb-6 flex items-center justify-between">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[var(--color-primary)]/15 text-[var(--color-primary)] group-hover:bg-[var(--color-primary)] group-hover:text-white transition-all duration-300">
+                      <item.icon className="h-5 w-5" />
+                    </div>
+                    {/* Step Number Badge */}
+                    <span className="font-mono text-xs font-bold text-[var(--color-secondary)] px-2.5 py-1 rounded-full bg-[var(--color-base)]/80">
+                      0{index + 1}
+                    </span>
+                  </div>
+                  <h3 className="font-display text-xl font-bold text-[var(--color-text-light)]">{item.title}</h3>
+                  <p className="mt-3 text-sm leading-relaxed text-[var(--color-text-muted)]">{item.copy}</p>
+                </div>
               </div>
-              <h3 className="font-display text-xl font-semibold">{item.title}</h3>
-              <p className="mt-3 text-sm leading-6 text-[var(--color-text-muted)]">{item.copy}</p>
             </div>
           ))}
         </div>
-      </div>
+      </ScrollReveal>
     </section>
   );
 }
 
 function TeamSection() {
   return (
-    <section className="bg-[var(--color-base)] py-20 sm:py-28">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6">
-        <div className="mb-10 max-w-3xl">
-          <p className="text-xs font-semibold uppercase text-[var(--color-secondary)]">Built for ministry teams</p>
-          <h2 className="mt-4 text-balance font-display text-3xl font-bold leading-tight sm:text-5xl">
+    <section id="team" className="relative bg-[var(--color-base)] py-20 sm:py-28 overflow-hidden">
+      {/* Background soft blur orb */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[35rem] h-[35rem] rounded-full bg-[var(--color-primary)]/5 blur-3xl pointer-events-none" />
+
+      <ScrollReveal animation="fadeUp" className="relative mx-auto max-w-7xl px-4 sm:px-6">
+        <div className="mb-14 max-w-3xl">
+          <p className="text-xs font-semibold uppercase tracking-wider text-[var(--color-secondary)]">Built for ministry teams</p>
+          <h2 className="mt-4 text-balance font-display text-3xl font-bold leading-tight sm:text-5xl relative inline-block">
             Different roles, one source of truth.
+            <span className="absolute bottom-0 left-0 w-32 h-1 bg-gradient-to-r from-[var(--color-primary)] to-transparent rounded-full mt-2 block" />
           </h2>
         </div>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {teams.map((team) => (
-            <div key={team.role} className="neon-card rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 shadow-sm transition-transform duration-200 hover:-translate-y-1">
-              <Users className="mb-8 h-6 w-6 text-[var(--color-primary)]" />
-              <h3 className="font-display text-xl font-semibold">{team.role}</h3>
-              <p className="mt-3 text-sm leading-6 text-[var(--color-text-muted)]">{team.value}</p>
+        
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+          {teamRolesWithIcons.map((team) => (
+            <div
+              key={team.role}
+              data-animate
+              className="neon-card rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 shadow-sm hover:shadow-md transition-all duration-300 group hover:-translate-y-1"
+            >
+              {/* Circular Avatar Gradient Backing */}
+              <div className={`mb-6 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br ${team.gradient} shadow-inner group-hover:scale-105 transition-transform duration-300`}>
+                <team.icon className="h-6 w-6" />
+              </div>
+              <h3 className="font-display text-xl font-bold text-[var(--color-text-light)]">{team.role}</h3>
+              <p className="mt-3 text-sm leading-relaxed text-[var(--color-text-muted)]">{team.value}</p>
             </div>
           ))}
         </div>
-      </div>
+      </ScrollReveal>
     </section>
   );
 }
 
 function BrandSection() {
   return (
-    <section className="bg-[var(--color-surface)] py-20 sm:py-28">
-      <div className="mx-auto grid max-w-7xl gap-10 px-4 sm:px-6 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
-        <MacBookMockup>
-          <BrandKitScreen />
-        </MacBookMockup>
+    <section id="brand" className="relative bg-[var(--color-surface)] py-20 sm:py-28 overflow-hidden">
+      <div className="absolute inset-0 landing-grid opacity-10 pointer-events-none" />
+      
+      <ScrollReveal animation="fadeUp" className="relative mx-auto grid max-w-7xl gap-12 px-4 sm:px-6 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
+        {/* Left side Macbook frame */}
+        <div className="relative group">
+          {/* Subtle background glow behind MacBook */}
+          <div className="absolute -inset-4 bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-secondary)] rounded-3xl opacity-10 blur-2xl group-hover:opacity-15 transition-all duration-500" />
+          
+          <MacBookMockup>
+            <BrandKitScreen />
+          </MacBookMockup>
+          
+          {/* Floating Brand Badges with Parallax */}
+          <ParallaxLayer speed={0.15} className="absolute -top-6 -right-6 hidden sm:block z-20">
+            <span className="flex items-center gap-1.5 rounded-full border border-[var(--color-secondary)]/30 bg-[var(--color-surface)]/90 px-4 py-2 text-xs font-semibold text-[var(--color-secondary)] shadow-lg backdrop-blur-md">
+              <Palette className="h-3.5 w-3.5" />
+              Custom Fonts
+            </span>
+          </ParallaxLayer>
+          <ParallaxLayer speed={-0.12} className="absolute -bottom-6 -left-6 hidden sm:block z-20">
+            <span className="flex items-center gap-1.5 rounded-full border border-[var(--color-primary)]/30 bg-[var(--color-surface)]/90 px-4 py-2 text-xs font-semibold text-[var(--color-primary)] shadow-lg backdrop-blur-md">
+              <Sparkles className="h-3.5 w-3.5" />
+              Dynamic Colors
+            </span>
+          </ParallaxLayer>
+        </div>
+
+        {/* Right side copy content */}
         <div>
-          <p className="text-xs font-semibold uppercase text-[var(--color-secondary)]">Brand kit</p>
-          <h2 className="mt-4 text-balance font-display text-3xl font-bold leading-tight sm:text-5xl">
+          <p className="text-xs font-semibold uppercase tracking-wider text-[var(--color-secondary)]">Brand Kit</p>
+          <h2 className="mt-4 text-balance font-display text-3xl font-bold leading-tight sm:text-5xl text-[var(--color-text-light)]">
             Every output should feel like your church made it.
           </h2>
           <p className="mt-5 text-pretty text-base leading-7 text-[var(--color-text-muted)] sm:text-lg sm:leading-8">
-            Brand controls are a premium feature: logos, colors, typography, caption styles, and graphics should carry through each generated asset.
+            Brand controls are a premium feature: logos, colors, typography, caption styles, and graphics should carry through each generated asset seamlessly.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
-            {["Logo variants", "Caption presets", "Quote graphics", "Carousel colors", "Typography"].map((item) => (
-              <span key={item} className="rounded-full border border-[var(--color-border)] bg-[var(--color-base)] px-4 py-2 text-sm font-medium text-[var(--color-text-light)] shadow-sm">
+            {[
+              "Logo Variants",
+              "Caption Presets",
+              "Quote Graphics",
+              "Carousel Colors",
+              "Typography",
+            ].map((item) => (
+              <span
+                key={item}
+                className="rounded-full border border-[var(--color-border)] bg-[var(--color-base)]/50 hover:bg-[var(--color-base)] hover:border-[var(--color-primary)] px-4 py-2 text-sm font-semibold text-[var(--color-text-light)] shadow-sm hover:shadow transition-all duration-200"
+              >
                 {item}
               </span>
             ))}
           </div>
         </div>
-      </div>
+      </ScrollReveal>
     </section>
   );
 }
 
 function OperationsSection() {
   return (
-    <section id="trust" className="bg-[var(--color-base)] py-20 sm:py-28">
-      <div className="mx-auto grid max-w-7xl gap-10 px-4 sm:px-6 lg:grid-cols-[0.85fr_1.15fr] lg:items-start">
+    <section id="trust" className="relative bg-[var(--color-base)] py-20 sm:py-28 overflow-hidden">
+      {/* Background diagonal divider lines or shapes */}
+      <div className="absolute inset-0 landing-grid opacity-10 pointer-events-none" />
+
+      <ScrollReveal animation="fadeUp" className="relative mx-auto grid max-w-7xl gap-12 px-4 sm:px-6 lg:grid-cols-[0.85fr_1.15fr] lg:items-start">
         <div>
-          <p className="text-xs font-semibold uppercase text-[var(--color-secondary)]">Trust and operations</p>
+          <p className="text-xs font-semibold uppercase tracking-wider text-[var(--color-secondary)]">Trust and operations</p>
           <h2 className="mt-4 text-balance font-display text-3xl font-bold leading-tight sm:text-5xl">
             Serious workflows need visible reliability.
           </h2>
@@ -260,88 +319,151 @@ function OperationsSection() {
             Buyers should see that RevelationsHub has authentication, storage, live data, background jobs, GPU processing, and billing behind the interface.
           </p>
         </div>
-        <div className="grid gap-3 sm:grid-cols-2">
-          {operations.map((item) => (
-            <div key={item} className="flex gap-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5 shadow-sm">
-              <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-[var(--color-primary)]" />
-              <p className="text-sm leading-6 text-[var(--color-text-light)]">{item}</p>
+
+        {/* Operations Grid cards */}
+        <div className="grid gap-4 sm:grid-cols-2 relative">
+          {operationsWithIcons.map((item) => (
+            <div
+              key={item.text}
+              data-animate
+              className="flex gap-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5 shadow-sm hover:shadow-md hover:border-[var(--color-primary)]/45 transition-all duration-300"
+            >
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[var(--color-primary)]/10 text-[var(--color-primary)]">
+                <item.icon className="h-5 w-5" />
+              </div>
+              <p className="text-sm leading-relaxed text-[var(--color-text-light)]">{item.text}</p>
             </div>
           ))}
         </div>
-      </div>
+      </ScrollReveal>
     </section>
   );
 }
 
 function PricingAndFaqSection() {
   return (
-    <section className="bg-[var(--color-base)] py-20 sm:py-28">
-      <div className="mx-auto grid max-w-7xl gap-10 px-4 sm:px-6 lg:grid-cols-[0.92fr_1.08fr]">
-        <div className="rounded-3xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 shadow-sm sm:p-8">
-          <Zap className="mb-8 h-8 w-8 text-[var(--color-secondary)]" />
-          <h2 className="text-balance font-display text-3xl font-bold leading-tight sm:text-4xl">
-            Ready to build the weekly content room?
-          </h2>
-          <p className="mt-5 text-base leading-7 text-[var(--color-text-muted)]">
-            Start with the current app, then expand into richer caption editing, re-rendering, onboarding samples, and analytics.
-          </p>
-          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-            <Link href="/sign-up">
-              <Button size="lg" className="w-full sm:w-auto">
-                Start Free Trial
-                <ArrowRight className="h-4 w-4" />
-              </Button>
-            </Link>
-            <Link href="/pricing">
-              <Button size="lg" variant="outline" className="w-full sm:w-auto">
-                View Pricing
-              </Button>
-            </Link>
+    <section id="pricing" className="relative bg-[var(--color-base)] py-20 sm:py-28 overflow-hidden">
+      {/* Background orbs */}
+      <div className="absolute bottom-0 left-1/3 w-[30rem] h-[30rem] rounded-full bg-[var(--color-secondary)]/5 blur-3xl pointer-events-none" />
+
+      <ScrollReveal animation="fadeUp" className="relative mx-auto grid max-w-7xl gap-12 px-4 sm:px-6 lg:grid-cols-[0.92fr_1.08fr]">
+        {/* Pricing CTA Card with gradient borders and grain overlay */}
+        <div className="gradient-border-card shadow-lg">
+          <div className="gradient-border-card-inner p-6 sm:p-10 flex flex-col justify-between h-full min-h-[400px] grain-overlay">
+            <div>
+              <div className="inline-flex size-14 items-center justify-center rounded-2xl bg-[var(--color-secondary)]/15 text-[var(--color-secondary)] mb-6 shadow-inner">
+                <Zap className="h-7 w-7" />
+              </div>
+              <h2 className="text-balance font-display text-3xl font-extrabold leading-tight sm:text-4xl text-[var(--color-text-light)]">
+                Ready to build the weekly content room?
+              </h2>
+              <p className="mt-5 text-base leading-relaxed text-[var(--color-text-muted)]">
+                Start with the current app, then expand into richer caption editing, re-rendering, onboarding samples, and analytics.
+              </p>
+            </div>
+            
+            <div className="mt-10 flex flex-col gap-4 sm:flex-row">
+              <Link href="/sign-up" className="w-full sm:w-auto">
+                <Button size="xl" className="w-full sm:w-auto shadow-lg shadow-[var(--color-primary)]/20 hover:shadow-[var(--color-primary)]/30">
+                  Start Free Trial
+                  <ArrowRight className="h-4 w-4 ml-1.5" />
+                </Button>
+              </Link>
+              <Link href="/pricing" className="w-full sm:w-auto">
+                <Button size="xl" variant="outline" className="w-full sm:w-auto bg-[var(--color-surface)]/60">
+                  View Pricing
+                </Button>
+              </Link>
+            </div>
           </div>
         </div>
-        <div className="space-y-3">
-          {faqs.map((faq) => (
-            <details key={faq.question} className="group rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5 shadow-sm">
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-4 font-display text-lg font-semibold">
-                {faq.question}
-                <ChevronRight className="h-5 w-5 shrink-0 text-[var(--color-primary)] transition-transform group-open:rotate-90" />
-              </summary>
-              <p className="mt-4 text-sm leading-6 text-[var(--color-text-muted)]">{faq.answer}</p>
-            </details>
-          ))}
+
+        {/* FAQs Accordion */}
+        <div className="flex flex-col justify-center">
+          <h3 className="font-display text-2xl font-bold mb-6 text-[var(--color-text-light)] flex items-center gap-2">
+            <Sparkles className="h-5 w-5 text-[var(--color-secondary)]" />
+            Frequently Asked Questions
+          </h3>
+          <FaqAccordion faqs={faqs} />
         </div>
-      </div>
+      </ScrollReveal>
     </section>
   );
 }
 
 function Footer() {
   return (
-    <footer className="relative overflow-hidden border-t border-[var(--color-border)] bg-[var(--color-surface)] py-16 text-[var(--color-text-muted)]">
+    <footer className="relative overflow-hidden border-t border-[var(--color-border)] bg-[var(--color-surface)] pt-0 pb-16 text-[var(--color-text-muted)]">
+      {/* 1. Full-width gradient CTA banner before footer */}
+      <div className="relative border-b border-[var(--color-border)] bg-gradient-to-r from-[var(--color-primary)]/10 via-[var(--color-secondary)]/5 to-[var(--color-primary)]/10 py-16 px-4 sm:px-6 text-center grain-overlay overflow-hidden">
+        <div className="absolute inset-0 landing-grid opacity-10 pointer-events-none" />
+        <div className="relative mx-auto max-w-4xl z-10">
+          <Badge className="mb-4 border border-[var(--color-secondary)]/30 bg-[var(--color-secondary)]/10 text-[var(--color-secondary)] uppercase tracking-wider text-xs px-3 py-1">
+            Keep Sunday Speaking
+          </Badge>
+          <h3 className="font-display text-2xl sm:text-4xl font-extrabold text-[var(--color-text-light)] tracking-tight">
+            Ready to multiply your message?
+          </h3>
+          <p className="mt-3 text-sm sm:text-base max-w-xl mx-auto text-[var(--color-text-muted)]">
+            Join hundreds of churches that are already turning weekly sermons into daily discipleship opportunities.
+          </p>
+          <div className="mt-6 flex justify-center gap-3">
+            <Link href="/sign-up">
+              <Button size="lg" className="shadow-md shadow-[var(--color-primary)]/15">
+                Get Started Free
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </div>
+
+      {/* Floating background watermark */}
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-x-0 top-2 select-none text-center font-display text-[17vw] font-black leading-none text-[var(--color-primary)]/10"
-        style={{ animation: "footerDrift 9s ease-in-out infinite" }}
+        className="pointer-events-none absolute inset-x-0 bottom-4 select-none text-center font-display text-[15vw] font-black leading-none text-transparent bg-clip-text bg-gradient-to-b from-[var(--color-primary)]/10 to-[var(--color-secondary)]/5 opacity-50"
+        style={{ animation: "footerDrift 12s ease-in-out infinite" }}
       >
         RevelationsHub
       </div>
-      <div className="relative mx-auto max-w-7xl px-4 sm:px-6">
+
+      {/* Actual footer links content */}
+      <div className="relative mx-auto max-w-7xl px-4 sm:px-6 pt-16">
         <div className="grid gap-10 md:grid-cols-[1.4fr_1fr_1fr_1fr]">
-          <div>
+          <div className="space-y-4">
             <LogoLockup markClassName="h-9 w-9" textClassName="text-xl" />
-            <p className="mt-4 max-w-sm text-sm leading-6">
+            <p className="max-w-sm text-sm leading-relaxed">
               Sermon clipping, captioning, and content generation for churches that want Sunday to keep speaking all week.
             </p>
+            {/* Social media icons links */}
+            <div className="flex items-center gap-3 pt-2">
+              {[
+                { name: "Twitter", href: "https://twitter.com", icon: "X" },
+                { name: "Instagram", href: "https://instagram.com", icon: "IG" },
+                { name: "YouTube", href: "https://youtube.com", icon: "YT" },
+                { name: "Facebook", href: "https://facebook.com", icon: "FB" }
+              ].map((social) => (
+                <a
+                  key={social.name}
+                  href={social.href}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex size-8 items-center justify-center rounded-full border border-[var(--color-border)] bg-[var(--color-base)]/50 hover:bg-[var(--color-primary)] hover:text-[#301A4B] hover:border-[var(--color-primary)] transition-all duration-200 text-xs font-bold text-[var(--color-text-light)]"
+                  aria-label={`Follow us on ${social.name}`}
+                >
+                  {social.icon}
+                </a>
+              ))}
+            </div>
           </div>
           {footerGroups.map(({ heading, links }) => (
             <div key={heading}>
-              <h3 className="font-display text-sm font-semibold uppercase text-[var(--color-text-light)]">{heading}</h3>
-              <div className="mt-4 grid gap-2 text-sm">
+              <h3 className="font-display text-sm font-semibold uppercase tracking-wider text-[var(--color-text-light)]">{heading}</h3>
+              <div className="mt-4 grid gap-2.5 text-sm">
                 {links.map((label) => (
                   <Link
                     key={label}
                     href={footerHref(label)}
-                    className="inline-flex items-center gap-2 text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-primary)]"
+                    className="inline-flex items-center gap-2 text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-primary)] font-medium"
                   >
                     {label}
                   </Link>
@@ -350,9 +472,9 @@ function Footer() {
             </div>
           ))}
         </div>
-        <div className="mt-10 flex flex-col gap-3 border-t border-[var(--color-border)] pt-6 text-xs sm:flex-row sm:items-center sm:justify-between">
+        <div className="mt-12 flex flex-col gap-3 border-t border-[var(--color-border)]/50 pt-8 text-xs sm:flex-row sm:items-center sm:justify-between">
           <span>Copyright 2026 RevelationsHub. All rights reserved.</span>
-          <span className="inline-flex items-center gap-2">
+          <span className="inline-flex items-center gap-2 font-medium">
             <LogoMark className="h-5 w-5" />
             Built for modern ministry teams.
           </span>
@@ -366,8 +488,8 @@ function footerHref(label: string) {
   const anchors: Record<string, string> = {
     Workflow: "#workflow",
     "Product tour": "#tour",
-    Captions: "#captions",
-    "Brand kit": "#trust",
+    Captions: "#features",
+    "Brand kit": "#brand",
     Pricing: "/pricing",
     Blog: "/blog",
     Support: "mailto:support@revelationshub.com",

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { inngest } from "@/inngest/client";
+import { convexQuery } from "@/lib/server/convex-http";
 
 // Processing configuration type
 interface ProcessConfig {
@@ -17,6 +18,16 @@ interface ProcessConfig {
     generateBlogPost: boolean;
     generateOutline: boolean;
     generateSummary: boolean;
+}
+
+interface ConvexOrg {
+    _id: string;
+}
+
+interface SermonRecord {
+    organizationId: string;
+    s3Key: string;
+    youtubeUrl?: string;
 }
 
 export async function POST(req: NextRequest) {
@@ -47,10 +58,45 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        const clipCount = config.clipCount || 5;
+        const clipCount = Math.min(Math.max(config.clipCount || 5, 1), 10);
+        const convexOrg = await convexQuery<ConvexOrg | null>("organizations:getByClerkId", {
+            clerkOrgId: orgId,
+        });
+
+        if (!convexOrg) {
+            return NextResponse.json(
+                { error: "Organization not found" },
+                { status: 403 }
+            );
+        }
+
+        const sermon = await convexQuery<SermonRecord | null>("sermons:getById", {
+            sermonId: config.sermonId,
+        });
+
+        if (!sermon || sermon.organizationId !== convexOrg._id) {
+            return NextResponse.json(
+                { error: "Sermon not found" },
+                { status: 404 }
+            );
+        }
 
         // FLOW 1: S3 Upload - Process via Modal (WhisperX + video clips)
         if (config.s3Key) {
+            if (sermon.s3Key !== config.s3Key) {
+                return NextResponse.json(
+                    { error: "S3 key does not match sermon" },
+                    { status: 403 }
+                );
+            }
+
+            if (!config.s3Key.startsWith(`sermons/${orgId}/`)) {
+                return NextResponse.json(
+                    { error: "S3 key does not belong to this organization" },
+                    { status: 403 }
+                );
+            }
+
             // Send event to Inngest to start Modal processing
             const event = await inngest.send({
                 name: "sermon/process",
@@ -74,6 +120,13 @@ export async function POST(req: NextRequest) {
 
         // FLOW 2: YouTube URL - Fetch transcript directly (no Modal needed)
         if (config.youtubeUrl) {
+            if (sermon.youtubeUrl && sermon.youtubeUrl !== config.youtubeUrl) {
+                return NextResponse.json(
+                    { error: "YouTube URL does not match sermon" },
+                    { status: 403 }
+                );
+            }
+
             // Step 1: Fetch transcript from YouTube
             const transcriptResponse = await fetch(
                 `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/youtube/transcript`,

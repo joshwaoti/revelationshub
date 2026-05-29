@@ -12,6 +12,19 @@ import Link from "next/link";
 import { useGenerateContent } from "@/hooks/use-generate-content";
 import { toast } from "sonner";
 
+type OutlineSection = {
+    timeRange?: string;
+    title?: string;
+    points?: string[];
+    keyScripture?: string;
+};
+
+type OutlineContent = {
+    title?: string;
+    speaker?: string;
+    sections?: OutlineSection[];
+};
+
 export default function SermonOutlinePage({ params }: { params: Promise<{ id: string }> }) {
     const resolvedParams = use(params);
     const sermonId = resolvedParams.id as Id<"sermons">;
@@ -19,14 +32,14 @@ export default function SermonOutlinePage({ params }: { params: Promise<{ id: st
     // Fetch sermon
     const sermon = useQuery(api.sermons.getById, { sermonId });
 
-    // Fetch generated content
-    const generatedContent = useQuery(
-        api.generatedContent.getBySermon,
-        sermon?._id ? { sermonId: sermon._id } : "skip"
+    // Fetch only outline content for this page.
+    const outlineContent = useQuery(
+        api.generatedContent.getBySermonAndType,
+        sermon?._id ? { sermonId: sermon._id, type: "sermon_outline" } : "skip"
     );
 
-    const outline = generatedContent?.find(c => c.type === "sermon_outline" && c.status === "ready");
-    const isProcessing = generatedContent?.some(c => c.type === "sermon_outline" && c.status === "processing");
+    const outline = outlineContent?.find(c => c.status === "ready");
+    const isProcessing = outlineContent?.some(c => c.status === "processing");
 
     // Generate content hook
     const { isGenerating, generateContent } = useGenerateContent();
@@ -45,7 +58,7 @@ export default function SermonOutlinePage({ params }: { params: Promise<{ id: st
     };
 
     // Parse content
-    const parseContent = (content: string) => {
+    const parseContent = (content: string): OutlineContent | null => {
         try {
             return JSON.parse(content);
         } catch {
@@ -54,7 +67,7 @@ export default function SermonOutlinePage({ params }: { params: Promise<{ id: st
     };
 
     // Loading state
-    if (sermon === undefined || generatedContent === undefined) {
+    if (sermon === undefined || outlineContent === undefined) {
         return (
             <div className="flex items-center justify-center min-h-[60vh]">
                 <Loader2 className="h-8 w-8 animate-spin text-[var(--color-primary)]" />
@@ -174,7 +187,7 @@ export default function SermonOutlinePage({ params }: { params: Promise<{ id: st
 
                         {/* Outline Sections */}
                         <div className="space-y-6">
-                            {data.sections?.map((section: any, index: number) => (
+                            {data.sections?.map((section, index) => (
                                 <div key={index} className="group">
                                     <div className="flex flex-col sm:flex-row sm:items-start gap-2 sm:gap-4 mb-3">
                                         {section.timeRange && (

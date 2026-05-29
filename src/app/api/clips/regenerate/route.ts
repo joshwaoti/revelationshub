@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { inngest } from "@/inngest/client";
+import { convexQuery } from "@/lib/server/convex-http";
 
 // Request payload type
 interface RegenerateClipsRequest {
@@ -12,6 +13,14 @@ interface RegenerateClipsRequest {
     startTime?: number;
     endTime?: number;
     appendMode: boolean;
+}
+
+interface ConvexOrg {
+    _id: string;
+}
+
+interface SermonRecord {
+    organizationId: string;
 }
 
 export async function POST(req: NextRequest) {
@@ -52,13 +61,37 @@ export async function POST(req: NextRequest) {
             }
         }
 
+        const convexOrg = await convexQuery<ConvexOrg | null>("organizations:getByClerkId", {
+            clerkOrgId: orgId,
+        });
+
+        if (!convexOrg) {
+            return NextResponse.json(
+                { error: "Organization not found" },
+                { status: 403 }
+            );
+        }
+
+        const sermon = await convexQuery<SermonRecord | null>("sermons:getById", {
+            sermonId: payload.sermonId,
+        });
+
+        if (!sermon || sermon.organizationId !== convexOrg._id) {
+            return NextResponse.json(
+                { error: "Sermon not found" },
+                { status: 404 }
+            );
+        }
+
+        const clipCount = Math.min(Math.max(payload.clipCount || 3, 1), 10);
+
         // Send event to Inngest to regenerate clips
         const event = await inngest.send({
             name: "sermon/regenerate-clips",
             data: {
                 sermonId: payload.sermonId,
                 captionEffect: payload.captionEffect || "karaoke",
-                clipCount: payload.clipCount || 3,
+                clipCount,
                 locationType: payload.locationType || "auto",
                 clipDescription: payload.clipDescription,
                 startTime: payload.startTime,

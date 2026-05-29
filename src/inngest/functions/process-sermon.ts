@@ -17,6 +17,48 @@ export const processSermon = inngest.createFunction(
             throw new Error("s3Key is required - this function only processes uploaded videos");
         }
 
+        await step.run("verify-organization-ownership", async () => {
+            if (!organizationId) {
+                throw new Error("organizationId is required");
+            }
+
+            const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL;
+            if (!convexUrl) throw new Error("Convex URL not configured");
+
+            const orgResponse = await fetch(`${convexUrl}/api/query`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    path: "organizations:getByClerkId",
+                    args: { clerkOrgId: organizationId },
+                    format: "json",
+                }),
+            });
+
+            const sermonResponse = await fetch(`${convexUrl}/api/query`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    path: "sermons:getById",
+                    args: { sermonId },
+                    format: "json",
+                }),
+            });
+
+            if (!orgResponse.ok || !sermonResponse.ok) {
+                throw new Error("Failed to verify sermon ownership");
+            }
+
+            const orgResult = await orgResponse.json();
+            const sermonResult = await sermonResponse.json();
+            const org = orgResult.value || orgResult;
+            const sermon = sermonResult.value || sermonResult;
+
+            if (!org || !sermon || sermon.organizationId !== org._id) {
+                throw new Error("Sermon does not belong to this organization");
+            }
+        });
+
         // Step 1: Call Modal API to process video
         const modalResult = await step.run("call-modal-api", async () => {
             const modalUrl = process.env.MODAL_API_URL;
