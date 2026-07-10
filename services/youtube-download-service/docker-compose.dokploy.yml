@@ -1,0 +1,60 @@
+services:
+  pot-provider:
+    image: brainicism/bgutil-ytdlp-pot-provider:1.3.1
+    restart: unless-stopped
+    init: true
+    networks:
+      - youtube-internal
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+  downloader:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      - pot-provider
+    environment:
+      AWS_REGION: ${AWS_REGION}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      AWS_S3_BUCKET: ${AWS_S3_BUCKET}
+      YOUTUBE_SERVICE_TOKEN: ${YOUTUBE_SERVICE_TOKEN}
+      YOUTUBE_PROXY_URLS: ${YOUTUBE_PROXY_URLS:-}
+      YOUTUBE_COOKIES_FILE: ${YOUTUBE_COOKIES_FILE:-}
+      POT_PROVIDER_URL: http://pot-provider:4416
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-}
+      ALLOWED_S3_PREFIX: sermons/
+      ALLOW_DIRECT_YOUTUBE_FALLBACK: ${ALLOW_DIRECT_YOUTUBE_FALLBACK:-true}
+      PUBLIC_INFO_ENDPOINT: ${PUBLIC_INFO_ENDPOINT:-false}
+      MAX_PROXY_ATTEMPTS: ${MAX_PROXY_ATTEMPTS:-4}
+      MAX_CONCURRENT_DOWNLOADS: ${MAX_CONCURRENT_DOWNLOADS:-2}
+      MAX_DOWNLOAD_SECONDS: ${MAX_DOWNLOAD_SECONDS:-10800}
+      MAX_DOWNLOAD_BYTES: ${MAX_DOWNLOAD_BYTES:-8589934592}
+      MAX_VIDEO_HEIGHT: ${MAX_VIDEO_HEIGHT:-1080}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    volumes:
+      - youtube-download-tmp:/tmp/youtube-downloads
+    networks:
+      - youtube-internal
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 4G
+        reservations:
+          cpus: "0.25"
+          memory: 512M
+
+networks:
+  youtube-internal:
+
+volumes:
+  youtube-download-tmp:
