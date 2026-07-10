@@ -8,15 +8,21 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-    Download,
     Share2,
     Edit,
     Loader2,
     ChevronLeft,
     Wand2,
+    Flame,
+    Quote,
+    MessageSquare,
+    Film,
+    Clapperboard,
 } from "lucide-react";
 import Link from "next/link";
+import { toast } from "sonner";
 import { RegenerateClipsModal } from "@/components/regenerate-clips-modal";
+import { DownloadClipButton } from "@/components/DownloadClipButton";
 
 // Format duration
 function formatDuration(seconds: number): string {
@@ -30,6 +36,37 @@ function formatTimestamp(seconds: number): string {
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
     return `${mins}:${secs.toString().padStart(2, "0")}`;
+}
+
+// Category chip labels for both sermon and podcast categories
+const CATEGORY_LABELS: Record<string, string> = {
+    conviction: "Conviction",
+    encouragement: "Encouragement",
+    teaching: "Teaching",
+    story: "Story",
+    challenge: "Challenge",
+    testimony: "Testimony",
+    hot_take: "Hot Take",
+    insight: "Insight",
+    qa: "Q&A",
+    humor: "Humor",
+    advice: "Advice",
+};
+
+function ScoreBadge({ score }: { score?: number }) {
+    if (typeof score !== "number") return null;
+    const tone =
+        score >= 85
+            ? "text-orange-400 bg-orange-500/10 border-orange-500/30"
+            : score >= 70
+                ? "text-amber-400 bg-amber-500/10 border-amber-500/30"
+                : "text-[var(--color-text-muted)] bg-[var(--color-surface)] border-[var(--color-border)]";
+    return (
+        <span className={`inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] font-semibold ${tone}`}>
+            <Flame className="h-3 w-3" />
+            {score}
+        </span>
+    );
 }
 
 export default function ClipsPage({ params }: { params: Promise<{ id: string }> }) {
@@ -59,12 +96,17 @@ export default function ClipsPage({ params }: { params: Promise<{ id: string }> 
 
     const videoRef = useRef<HTMLVideoElement>(null);
 
-    // Get ready clips
-    const readyClips = clips?.filter(c => c.status === "ready") || [];
+    const isPodcast = sermon?.videoType === "podcast";
+    const contentWord = isPodcast ? "episode" : "sermon";
+
+    // Get ready clips, best first
+    const readyClips = (clips?.filter(c => c.status === "ready") || [])
+        .sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
     const processingClips = clips?.filter(c => c.status === "processing" || c.status === "pending") || [];
 
     // Check if any clips are being generated or processing
     const isProcessingClips = processingClips.length > 0 || isGenerating;
+    const isSermonStillProcessing = sermon?.status === "processing" || sermon?.status === "uploading";
 
     // Selected clip
     const selectedClip = selectedClipId
@@ -75,8 +117,6 @@ export default function ClipsPage({ params }: { params: Promise<{ id: string }> 
     useEffect(() => {
         const fetchSignedUrl = async () => {
             if (!selectedClip?.s3Key) return;
-
-            // Check if we already have a valid URL
             if (signedUrls[selectedClip.s3Key]) return;
 
             setLoadingUrl(true);
@@ -106,15 +146,11 @@ export default function ClipsPage({ params }: { params: Promise<{ id: string }> 
     // Reset generating state when new clips appear (either processing or ready)
     useEffect(() => {
         const currentCount = clips?.length || 0;
-
-        // If clips count increased, or if processing clips appeared, stop "generating" state
-        // We let the UI rely on isProcessingClips (data-driven) from this point
         if (isGenerating) {
             if (currentCount > prevClipCountRef.current || processingClips.length > 0) {
                 setIsGenerating(false);
             }
         }
-
         prevClipCountRef.current = currentCount;
     }, [clips?.length, processingClips.length, isGenerating]);
 
@@ -123,11 +159,45 @@ export default function ClipsPage({ params }: { params: Promise<{ id: string }> 
         return signedUrls[s3Key] || "";
     };
 
-    // Loading state
+    const handleShare = async () => {
+        if (!selectedClip) return;
+        const url = getClipUrl(selectedClip.s3Key);
+        if (!url) return;
+        try {
+            if (navigator.share) {
+                await navigator.share({
+                    title: selectedClip.title || "Clip",
+                    url,
+                });
+            } else {
+                await navigator.clipboard.writeText(url);
+                toast.success("Link copied", {
+                    description: "Share link is valid for a limited time.",
+                });
+            }
+        } catch {
+            // User cancelled share sheet - not an error
+        }
+    };
+
+    // Loading state - skeleton layout instead of a lone spinner
     if (sermon === undefined || clips === undefined) {
         return (
-            <div className="flex items-center justify-center min-h-[60vh]">
-                <Loader2 className="h-8 w-8 animate-spin text-[var(--color-primary)]" />
+            <div className="h-[calc(100vh-48px)] flex flex-col animate-pulse">
+                <div className="flex items-center gap-3 mb-4">
+                    <div className="h-8 w-20 rounded-lg bg-[var(--color-surface)]" />
+                    <div className="h-6 w-64 rounded-lg bg-[var(--color-surface)]" />
+                </div>
+                <div className="flex-1 flex gap-6 min-h-0">
+                    <div className="w-80 shrink-0 space-y-2">
+                        {[...Array(4)].map((_, i) => (
+                            <div key={i} className="h-24 rounded-xl bg-[var(--color-surface)]" />
+                        ))}
+                    </div>
+                    <div className="flex-1 flex items-center justify-center">
+                        <div className="h-[70%] rounded-xl bg-[var(--color-surface)]" style={{ aspectRatio: "9/16" }} />
+                    </div>
+                </div>
             </div>
         );
     }
@@ -136,7 +206,7 @@ export default function ClipsPage({ params }: { params: Promise<{ id: string }> 
     if (sermon === null) {
         return (
             <div className="flex items-center justify-center min-h-[60vh]">
-                <p className="text-[var(--color-text-muted)]">Sermon not found</p>
+                <p className="text-[var(--color-text-muted)]">Not found</p>
             </div>
         );
     }
@@ -145,24 +215,24 @@ export default function ClipsPage({ params }: { params: Promise<{ id: string }> 
         <div className="h-[calc(100vh-48px)] flex flex-col">
             {/* Header */}
             <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 min-w-0">
                     <Link href={`/sermon/${sermonId}`}>
                         <Button variant="ghost" size="sm">
                             <ChevronLeft className="h-4 w-4 mr-1" />
                             Back
                         </Button>
                     </Link>
-                    <h2 className="font-display text-lg font-semibold text-[var(--color-text-light)]">
-                        Clips for: {sermon?.title}
+                    <h2 className="font-display text-lg font-semibold text-[var(--color-text-light)] truncate">
+                        Clips · {sermon?.title}
                     </h2>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 shrink-0">
                     <Badge variant="secondary">
                         {readyClips.length} ready
                     </Badge>
                     {processingClips.length > 0 && (
                         <Badge variant="processing">
-                            {processingClips.length} processing
+                            {processingClips.length} rendering
                         </Badge>
                     )}
                 </div>
@@ -201,19 +271,60 @@ export default function ClipsPage({ params }: { params: Promise<{ id: string }> 
                     </div>
 
                     {readyClips.length === 0 && processingClips.length === 0 ? (
-                        <div className="text-center py-8 text-[var(--color-text-muted)]">
-                            <p>No clips generated yet</p>
+                        /* Designed empty state */
+                        <div className="rounded-2xl border border-dashed border-[var(--color-border)] bg-[var(--color-surface)]/40 px-5 py-10 text-center">
+                            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-[var(--color-primary)]/20 to-[var(--color-secondary)]/20">
+                                <Clapperboard className="h-6 w-6 text-[var(--color-primary)]" />
+                            </div>
+                            {isSermonStillProcessing ? (
+                                <>
+                                    <p className="font-medium text-[var(--color-text-light)] mb-1">
+                                        Clips are on the way
+                                    </p>
+                                    <p className="text-xs text-[var(--color-text-muted)] leading-relaxed">
+                                        The AI is transcribing your {contentWord} and hunting for the most
+                                        share-worthy moments. This usually takes a few minutes.
+                                    </p>
+                                </>
+                            ) : (
+                                <>
+                                    <p className="font-medium text-[var(--color-text-light)] mb-1">
+                                        No clips yet
+                                    </p>
+                                    <p className="text-xs text-[var(--color-text-muted)] leading-relaxed mb-4">
+                                        Generate clips from the best moments of this {contentWord}, or
+                                        describe the exact moment you want in the transcript chat.
+                                    </p>
+                                    <div className="flex flex-col gap-2">
+                                        <Button
+                                            size="sm"
+                                            onClick={() => setRegenerateModalOpen(true)}
+                                            disabled={!sermon?.s3Key}
+                                        >
+                                            <Wand2 className="h-4 w-4 mr-1.5" />
+                                            Generate Clips
+                                        </Button>
+                                        <Link href={`/sermon/${sermonId}/chat`} className="w-full">
+                                            <Button size="sm" variant="outline" className="w-full">
+                                                <MessageSquare className="h-4 w-4 mr-1.5" />
+                                                Ask the Transcript
+                                            </Button>
+                                        </Link>
+                                    </div>
+                                </>
+                            )}
                         </div>
                     ) : (
                         <>
                             {/* Processing clips */}
                             {processingClips.map((clip) => (
-                                <Card key={clip._id} className="opacity-60">
+                                <Card key={clip._id} className="relative overflow-hidden">
+                                    <div className="absolute inset-0 -translate-x-full animate-[shimmer_2s_infinite] bg-gradient-to-r from-transparent via-white/5 to-transparent" />
                                     <div className="p-3">
                                         <div className="flex items-center gap-2 mb-2">
                                             <Loader2 className="h-4 w-4 animate-spin text-[var(--color-primary)]" />
-                                            <p className="text-sm text-[var(--color-text-muted)]">
-                                                Processing clip...
+                                            <p className="text-sm text-[var(--color-text-light)]">
+                                                {clip.title || "Rendering clip…"}
                                             </p>
                                         </div>
                                         <div className="flex items-center gap-3 text-xs text-[var(--color-text-muted)]">
@@ -221,6 +332,7 @@ export default function ClipsPage({ params }: { params: Promise<{ id: string }> 
                                                 {formatDuration(clip.endTime - clip.startTime)}
                                             </span>
                                             <span>@ {formatTimestamp(clip.startTime)}</span>
+                                            <span className="text-[var(--color-primary)]">Adding captions…</span>
                                         </div>
                                     </div>
                                 </Card>
@@ -237,19 +349,27 @@ export default function ClipsPage({ params }: { params: Promise<{ id: string }> 
                                         }`}
                                 >
                                     <div className="p-3">
-                                        <div className="flex items-start justify-between gap-2 mb-2">
-                                            <p className="text-sm text-[var(--color-text-light)] line-clamp-2">
+                                        <div className="flex items-start justify-between gap-2 mb-1.5">
+                                            <p className="text-sm font-medium text-[var(--color-text-light)] line-clamp-2">
                                                 {clip.title || `Clip at ${formatTimestamp(clip.startTime)}`}
                                             </p>
-                                            <Badge variant="success" className="shrink-0">
-                                                Ready
-                                            </Badge>
+                                            <ScoreBadge score={clip.score} />
                                         </div>
-                                        <div className="flex items-center gap-3 text-xs text-[var(--color-text-muted)]">
+                                        {clip.hook && (
+                                            <p className="mb-1.5 text-xs italic text-[var(--color-text-muted)] line-clamp-1">
+                                                “{clip.hook}”
+                                            </p>
+                                        )}
+                                        <div className="flex items-center gap-2 text-xs text-[var(--color-text-muted)]">
                                             <span className="font-mono">
                                                 {formatDuration(clip.endTime - clip.startTime)}
                                             </span>
                                             <span>@ {formatTimestamp(clip.startTime)}</span>
+                                            {clip.category && CATEGORY_LABELS[clip.category] && (
+                                                <span className="rounded-full bg-[var(--color-primary)]/10 px-1.5 py-0.5 text-[10px] text-[var(--color-primary)]">
+                                                    {CATEGORY_LABELS[clip.category]}
+                                                </span>
+                                            )}
                                         </div>
                                     </div>
                                 </Card>
@@ -264,29 +384,26 @@ export default function ClipsPage({ params }: { params: Promise<{ id: string }> 
                         <>
                             {/* Video Preview - Vertical Video Optimized */}
                             <div className="flex-1 flex items-center justify-center bg-[var(--color-base)] rounded-[var(--radius-default)] p-4 overflow-hidden">
-                                {/* Container that maintains 9:16 aspect ratio and fills available height */}
                                 <div className="relative h-full" style={{ aspectRatio: '9/16', maxHeight: '100%' }}>
                                     {getClipUrl(selectedClip.s3Key) ? (
-                                        <>
-                                            <video
-                                                ref={videoRef}
-                                                key={selectedClip._id}
-                                                controls
-                                                controlsList="nodownload"
-                                                playsInline
-                                                className="w-full h-full object-contain rounded-lg bg-black"
-                                                poster={selectedClip.thumbnailUrl || undefined}
-                                                style={{ maxHeight: '100%' }}
-                                            >
-                                                <source src={getClipUrl(selectedClip.s3Key)} type="video/mp4" />
-                                                Your browser does not support the video tag.
-                                            </video>
-                                        </>
+                                        <video
+                                            ref={videoRef}
+                                            key={selectedClip._id}
+                                            controls
+                                            controlsList="nodownload"
+                                            playsInline
+                                            className="w-full h-full object-contain rounded-lg bg-black"
+                                            poster={selectedClip.thumbnailUrl || undefined}
+                                            style={{ maxHeight: '100%' }}
+                                        >
+                                            <source src={getClipUrl(selectedClip.s3Key)} type="video/mp4" />
+                                            Your browser does not support the video tag.
+                                        </video>
                                     ) : loadingUrl ? (
                                         <div className="w-full h-full flex items-center justify-center bg-black rounded-lg" style={{ aspectRatio: '9/16' }}>
                                             <div className="text-center">
                                                 <Loader2 className="h-12 w-12 text-[var(--color-primary)] animate-spin mx-auto mb-4" />
-                                                <p className="text-white/70 text-sm">Loading video...</p>
+                                                <p className="text-white/70 text-sm">Loading preview…</p>
                                             </div>
                                         </div>
                                     ) : (
@@ -310,26 +427,33 @@ export default function ClipsPage({ params }: { params: Promise<{ id: string }> 
                                 </div>
                             </div>
 
-                            {/* Clip Actions */}
-                            <div className="mt-6 flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                    {getClipUrl(selectedClip.s3Key) ? (
-                                        <a
-                                            href={getClipUrl(selectedClip.s3Key)}
-                                            download
-                                        >
-                                            <Button variant="outline">
-                                                <Download className="h-4 w-4 mr-2" />
-                                                Download
-                                            </Button>
-                                        </a>
-                                    ) : (
-                                        <Button disabled variant="outline">
-                                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                            Loading...
-                                        </Button>
+                            {/* Clip metadata */}
+                            {(selectedClip.quote || selectedClip.reason) && (
+                                <div className="mt-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)]/60 p-3 space-y-1.5">
+                                    {selectedClip.quote && (
+                                        <p className="flex items-start gap-2 text-sm text-[var(--color-text-light)]">
+                                            <Quote className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--color-primary)]" />
+                                            <span className="italic">“{selectedClip.quote}”</span>
+                                        </p>
                                     )}
-                                    <Button variant="outline">
+                                    {selectedClip.reason && (
+                                        <p className="text-xs text-[var(--color-text-muted)] pl-5.5">
+                                            Why this clip: {selectedClip.reason}
+                                        </p>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* Clip Actions */}
+                            <div className="mt-4 flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <DownloadClipButton
+                                        clipS3Key={selectedClip.s3Key}
+                                        clipTitle={selectedClip.title || `${sermon.title}_clip_${Math.floor(selectedClip.startTime)}`}
+                                        variant="outline"
+                                        size="default"
+                                    />
+                                    <Button variant="outline" onClick={handleShare} disabled={!getClipUrl(selectedClip.s3Key)}>
                                         <Share2 className="h-4 w-4 mr-2" />
                                         Share
                                     </Button>
@@ -344,8 +468,18 @@ export default function ClipsPage({ params }: { params: Promise<{ id: string }> 
                             </div>
                         </>
                     ) : (
-                        <div className="flex-1 flex items-center justify-center text-[var(--color-text-muted)]">
-                            <p>Select a clip to preview</p>
+                        <div className="flex-1 flex flex-col items-center justify-center text-center px-6">
+                            <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--color-surface)]">
+                                <Film className="h-7 w-7 text-[var(--color-text-muted)]" />
+                            </div>
+                            <p className="text-[var(--color-text-light)] font-medium mb-1">
+                                {isProcessingClips ? "Your clips are rendering" : "Select a clip to preview"}
+                            </p>
+                            <p className="text-sm text-[var(--color-text-muted)] max-w-sm">
+                                {isProcessingClips
+                                    ? "Each clip gets reframed to vertical, captioned, and polished. They appear here the moment they're done."
+                                    : "Pick a clip from the list to watch it, download it, or open it in the editor."}
+                            </p>
                         </div>
                     )}
                 </div>

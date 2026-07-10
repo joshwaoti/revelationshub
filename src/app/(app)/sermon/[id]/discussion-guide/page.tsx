@@ -54,6 +54,28 @@ export default function DiscussionGuidePage({ params }: { params: Promise<{ id: 
 
     const guide = discussionGuide ? parseContent(discussionGuide.content) : null;
 
+    // Podcast episodes get listener-guide language; sermons keep ministry language
+    const isPodcast = sermon?.videoType === "podcast";
+    const labels = isPodcast
+        ? {
+            pageTitle: "Listener Guide",
+            subtitle: "Listener Discussion Guide",
+            opening: "Opening Thought",
+            key: "Key Quote",
+            closing: "Closing Thought",
+            emptyBody: "Generate a discussion guide from your episode transcript",
+            generateCta: "Generate Listener Guide",
+        }
+        : {
+            pageTitle: "Discussion Guide",
+            subtitle: "Small Group Discussion Guide",
+            opening: "Opening Prayer",
+            key: "Key Scripture",
+            closing: "Closing Prayer",
+            emptyBody: "Generate a discussion guide from your sermon transcript",
+            generateCta: "Generate Discussion Guide",
+        };
+
     return (
         <div className="min-h-screen bg-[var(--color-scripture-bg)]">
             {/* Header */}
@@ -67,7 +89,7 @@ export default function DiscussionGuidePage({ params }: { params: Promise<{ id: 
                     </Link>
                     <div>
                         <h1 className="font-display text-xl sm:text-2xl font-bold text-[var(--color-text-light)]">
-                            Discussion Guide
+                            {labels.pageTitle}
                         </h1>
                         <p className="text-sm text-[var(--color-text-muted)]">
                             {sermon?.title}
@@ -95,10 +117,10 @@ export default function DiscussionGuidePage({ params }: { params: Promise<{ id: 
                 <div className="text-center py-16">
                     <MessageSquare className="h-12 w-12 mx-auto text-[var(--color-text-muted)] mb-4" />
                     <h3 className="text-lg font-semibold text-[var(--color-text-light)] mb-2">
-                        No Discussion Guide Generated Yet
+                        No {labels.pageTitle} Generated Yet
                     </h3>
                     <p className="text-[var(--color-text-muted)] mb-6">
-                        Generate a discussion guide from your sermon transcript
+                        {labels.emptyBody}
                     </p>
                     <Button onClick={handleRegenerate} disabled={isGenerating}>
                         {isGenerating ? (
@@ -106,7 +128,7 @@ export default function DiscussionGuidePage({ params }: { params: Promise<{ id: 
                         ) : (
                             <Sparkles className="h-4 w-4 mr-2" />
                         )}
-                        {isGenerating ? "Generating..." : "Generate Discussion Guide"}
+                        {isGenerating ? "Generating..." : labels.generateCta}
                     </Button>
                 </div>
             )}
@@ -151,7 +173,7 @@ export default function DiscussionGuidePage({ params }: { params: Promise<{ id: 
                                     {guide.title || sermon?.title}
                                 </h2>
                                 <p className="text-gray-600 dark:text-[var(--color-text-muted)]">
-                                    Small Group Discussion Guide
+                                    {labels.subtitle}
                                 </p>
                             </div>
 
@@ -160,7 +182,7 @@ export default function DiscussionGuidePage({ params }: { params: Promise<{ id: 
                                 <section>
                                     <h3 className="font-display text-lg sm:text-xl font-semibold text-gray-900 dark:text-[var(--color-text-light)] mb-3 flex items-center gap-2">
                                         <span className="h-6 w-6 rounded-full bg-[var(--color-success)] text-white text-sm flex items-center justify-center shrink-0">1</span>
-                                        Opening Prayer
+                                        {labels.opening}
                                     </h3>
                                     <p className="text-gray-700 dark:text-[var(--color-text-light)] leading-relaxed italic">
                                         &quot;{guide.openingPrayer}&quot;
@@ -173,7 +195,7 @@ export default function DiscussionGuidePage({ params }: { params: Promise<{ id: 
                                 <section>
                                     <h3 className="font-display text-lg sm:text-xl font-semibold text-gray-900 dark:text-[var(--color-text-light)] mb-3 flex items-center gap-2">
                                         <span className="h-6 w-6 rounded-full bg-[var(--color-success)] text-white text-sm flex items-center justify-center shrink-0">2</span>
-                                        Key Scripture
+                                        {labels.key}
                                     </h3>
                                     <blockquote className="border-l-4 border-[var(--color-primary)] pl-4 py-2 bg-[var(--color-primary)]/5 rounded-r">
                                         <p className="text-gray-700 dark:text-[var(--color-text-light)] italic">
@@ -226,7 +248,7 @@ export default function DiscussionGuidePage({ params }: { params: Promise<{ id: 
                                 <section>
                                     <h3 className="font-display text-lg sm:text-xl font-semibold text-gray-900 dark:text-[var(--color-text-light)] mb-3 flex items-center gap-2">
                                         <span className="h-6 w-6 rounded-full bg-[var(--color-success)] text-white text-sm flex items-center justify-center shrink-0">5</span>
-                                        Closing Prayer
+                                        {labels.closing}
                                     </h3>
                                     <p className="text-gray-700 dark:text-[var(--color-text-light)] leading-relaxed italic">
                                         &quot;{guide.closingPrayer}&quot;

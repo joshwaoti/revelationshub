@@ -1,5 +1,29 @@
 import { inngest } from "../client";
 
+// Moment metadata returned by the Modal analysis step
+interface ModalMoment {
+    start: number;
+    end: number;
+    title?: string | null;
+    hook?: string | null;
+    quote?: string | null;
+    reason?: string | null;
+    category?: string | null;
+    score?: number | null;
+}
+
+// Strip null values so Convex optional validators accept the payload
+function momentMetadata(moment: ModalMoment) {
+    return {
+        title: moment.title ?? undefined,
+        hook: moment.hook ?? undefined,
+        quote: moment.quote ?? undefined,
+        reason: moment.reason ?? undefined,
+        category: moment.category ?? undefined,
+        score: moment.score ?? undefined,
+    };
+}
+
 // Process sermon video - orchestrates the full video processing pipeline
 // NOTE: This function ONLY handles S3-uploaded videos (processed via Modal with WhisperX)
 // YouTube videos are handled separately via the frontend transcript API + Gemini
@@ -105,9 +129,9 @@ export const processSermon = inngest.createFunction(
                 s3_key: string;
                 clips_created: number;
                 transcript_segments: Array<{ start: number; end: number; word: string }>;
-                clip_moments: Array<{ start: number; end: number; s3_key: string }>;
+                clip_moments: Array<ModalMoment & { s3_key: string }>;
                 // All moments identified by AI (for regeneration)
-                all_identified_moments?: Array<{ start: number; end: number }>;
+                all_identified_moments?: ModalMoment[];
                 processed_indices?: number[];
             };
         });
@@ -181,6 +205,7 @@ export const processSermon = inngest.createFunction(
                             startTime: clip.start,
                             endTime: clip.end,
                             s3Key: clip.s3_key,
+                            ...momentMetadata(clip),
                         })),
                     },
                     format: "json", // Required for Convex HTTP API
@@ -224,6 +249,7 @@ export const processSermon = inngest.createFunction(
                         moments: allMoments.map(m => ({
                             startTime: m.start,
                             endTime: m.end,
+                            ...momentMetadata(m),
                         })),
                         usedIndices: processedIndices,
                     },

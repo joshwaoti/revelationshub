@@ -79,6 +79,7 @@ export default function LibraryPage() {
     const { organization } = useOrganization();
 
     const [view, setView] = useState<"grid" | "list">("grid");
+    const [typeFilter, setTypeFilter] = useState<"all" | "sermon" | "podcast">("all");
     const [searchQuery, setSearchQuery] = useState("");
     const [uploadModalOpen, setUploadModalOpen] = useState(false);
     const [openMenuId, setOpenMenuId] = useState<string | null>(null);
@@ -105,8 +106,11 @@ export default function LibraryPage() {
     // Loading state
     const isLoading = !organization || convexOrg === undefined || sermons === undefined;
 
-    // Filter sermons based on search
+    // Filter sermons based on search + content type
     const filteredSermons = (sermons || [])
+        .filter((sermon) =>
+            typeFilter === "all" || (sermon.videoType || "sermon") === typeFilter
+        )
         .filter(
             (sermon) =>
                 sermon.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -206,10 +210,10 @@ export default function LibraryPage() {
             >
                 <div>
                     <h1 className="font-display text-3xl font-bold text-[var(--color-text-light)]">
-                        Sermon Library
+                        Library
                     </h1>
                     <p className="text-[var(--color-text-muted)]">
-                        {sermons?.length || 0} sermons uploaded
+                        {sermons?.length || 0} {(sermons?.length || 0) === 1 ? "video" : "videos"} · sermons and podcast episodes
                     </p>
                 </div>
                 <div className="flex items-center gap-4">
@@ -258,20 +262,50 @@ export default function LibraryPage() {
                             ) : (
                                 <Upload className="h-4 w-4 mr-2" />
                             )}
-                            {hasInProgressSermon ? "Processing..." : "Upload Sermon"}
+                            {hasInProgressSermon ? "Processing..." : "Upload"}
                         </Button>
                     </motion.div>
                 </div>
             </motion.div>
 
-            {/* Loading State */}
-            {isLoading && (
-                <div className="flex items-center justify-center py-16">
-                    <Loader2 className="h-8 w-8 animate-spin text-[var(--color-primary)]" />
+            {/* Type filter tabs */}
+            {!isLoading && (sermons?.length || 0) > 0 && (
+                <div className="mb-6 flex items-center gap-2">
+                    {([
+                        { value: "all", label: "All" },
+                        { value: "sermon", label: "Sermons" },
+                        { value: "podcast", label: "Podcasts" },
+                    ] as const).map((tab) => (
+                        <button
+                            key={tab.value}
+                            onClick={() => setTypeFilter(tab.value)}
+                            className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${typeFilter === tab.value
+                                ? "bg-[var(--color-primary)] text-white"
+                                : "bg-[var(--color-surface)] text-[var(--color-text-muted)] hover:text-[var(--color-text-light)]"
+                                }`}
+                        >
+                            {tab.label}
+                        </button>
+                    ))}
                 </div>
             )}
 
-            {/* Empty State - No sermons yet */}
+            {/* Loading State - skeleton cards keep the layout stable */}
+            {isLoading && (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 animate-pulse">
+                    {[...Array(8)].map((_, i) => (
+                        <div key={i} className="overflow-hidden rounded-xl border border-[var(--color-border)]">
+                            <div className="aspect-video bg-[var(--color-surface)]" />
+                            <div className="space-y-2 p-4">
+                                <div className="h-4 w-3/4 rounded bg-[var(--color-surface)]" />
+                                <div className="h-3 w-1/2 rounded bg-[var(--color-surface)]" />
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
+
+            {/* Empty State - No videos yet */}
             {!isLoading && sermons?.length === 0 && (
                 <motion.div
                     className="text-center py-16"
@@ -282,14 +316,38 @@ export default function LibraryPage() {
                         <Video className="h-10 w-10 text-[var(--color-primary)]" />
                     </div>
                     <h3 className="text-xl font-semibold text-[var(--color-text-light)] mb-2">
-                        No sermons yet
+                        Your library is empty
                     </h3>
                     <p className="text-[var(--color-text-muted)] mb-6 max-w-md mx-auto">
-                        Upload your first sermon to start generating clips, quotes, and more.
+                        Upload a sermon or podcast episode and the AI will transcribe it, find the
+                        best moments, and turn it into a week of clips and content.
                     </p>
                     <Button size="lg" onClick={() => setUploadModalOpen(true)}>
                         <Upload className="h-5 w-5 mr-2" />
-                        Upload Your First Sermon
+                        Upload Your First Video
+                    </Button>
+                </motion.div>
+            )}
+
+            {/* Filter Empty State - videos exist but none match the type filter */}
+            {!isLoading && (sermons?.length || 0) > 0 && filteredSermons.length === 0 && !searchQuery && (
+                <motion.div
+                    className="text-center py-16"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                >
+                    <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-[var(--color-surface)] flex items-center justify-center">
+                        <Video className="h-8 w-8 text-[var(--color-text-muted)]" />
+                    </div>
+                    <h3 className="text-lg font-semibold text-[var(--color-text-light)] mb-2">
+                        No {typeFilter === "podcast" ? "podcast episodes" : "sermons"} yet
+                    </h3>
+                    <p className="text-[var(--color-text-muted)] mb-6">
+                        Upload one and it will show up here.
+                    </p>
+                    <Button onClick={() => setUploadModalOpen(true)}>
+                        <Upload className="h-4 w-4 mr-2" />
+                        Upload {typeFilter === "podcast" ? "an Episode" : "a Sermon"}
                     </Button>
                 </motion.div>
             )}
@@ -333,8 +391,11 @@ export default function LibraryPage() {
                                                         <Play className="h-5 w-5 text-[var(--color-base)] ml-0.5" />
                                                     </motion.div>
                                                 </motion.div>
-                                                {/* Status Badge */}
+                                                {/* Status + type badges */}
                                                 <div className="absolute top-2 right-2 flex items-center gap-1">
+                                                    <span className="rounded-full bg-black/60 px-2 py-0.5 text-[10px] font-medium text-white backdrop-blur-sm">
+                                                        {sermon.videoType === "podcast" ? "🎙️ Podcast" : "✝️ Sermon"}
+                                                    </span>
                                                     <Badge variant={getStatusVariant(sermon.status)}>
                                                         {getStatusLabel(sermon.status)}
                                                     </Badge>
@@ -463,9 +524,14 @@ export default function LibraryPage() {
                                                                 {sermon.series || "No series"} • {sermon.speaker || "Unknown"}
                                                             </p>
                                                         </div>
-                                                        <Badge variant={getStatusVariant(sermon.status)}>
-                                                            {getStatusLabel(sermon.status)}
-                                                        </Badge>
+                                                        <div className="flex items-center gap-1.5">
+                                                            <span className="rounded-full bg-[var(--color-base)] px-2 py-0.5 text-[10px] font-medium text-[var(--color-text-muted)]">
+                                                                {sermon.videoType === "podcast" ? "🎙️ Podcast" : "✝️ Sermon"}
+                                                            </span>
+                                                            <Badge variant={getStatusVariant(sermon.status)}>
+                                                                {getStatusLabel(sermon.status)}
+                                                            </Badge>
+                                                        </div>
                                                     </div>
                                                     <div className="flex items-center gap-6 mt-3 text-sm text-[var(--color-text-muted)]">
                                                         <span className="flex items-center gap-1.5">
@@ -536,7 +602,7 @@ export default function LibraryPage() {
             </AnimatePresence>
 
             {/* Search Empty State */}
-            {!isLoading && sermons && sermons.length > 0 && filteredSermons.length === 0 && (
+            {!isLoading && sermons && sermons.length > 0 && filteredSermons.length === 0 && !!searchQuery && (
                 <motion.div
                     className="text-center py-16"
                     initial={{ opacity: 0, y: 20 }}

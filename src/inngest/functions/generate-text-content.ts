@@ -24,6 +24,32 @@ export const generateTextContent = inngest.createFunction(
             generateSummary,
         } = event.data;
 
+        // Step 0: Determine content type (sermon vs podcast) - prompts differ
+        const videoType = await step.run("get-video-type", async () => {
+            const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL;
+            if (!convexUrl) return "sermon";
+
+            try {
+                const response = await fetch(`${convexUrl}/api/query`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        path: "sermons:getById",
+                        args: { sermonId },
+                        format: "json",
+                    }),
+                });
+                if (!response.ok) return "sermon";
+                const result = await response.json();
+                const sermon = result.value || result;
+                return sermon?.videoType === "podcast" ? "podcast" : "sermon";
+            } catch {
+                return "sermon";
+            }
+        });
+
+        const isPodcast = videoType === "podcast";
+
         // Step 1: Get or save transcript
         const transcript = await step.run("handle-transcript", async () => {
             const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL;
@@ -141,7 +167,35 @@ export const generateTextContent = inngest.createFunction(
                     console.log(`[generate-quotes] Deleted existing quotes successfully`);
                 }
 
-                const prompt = `You are a sermon content specialist. Extract 5-7 powerful, shareable quotes from this sermon transcript.
+                const prompt = isPodcast
+                    ? `You are a podcast content specialist. Extract 5-7 powerful, shareable quotes from this podcast episode transcript.
+
+REQUIREMENTS:
+- Each quote should be self-contained and meaningful on its own
+- Length: 15-40 words each
+- Must be directly from the episode (not paraphrased)
+- Should be insightful, surprising, contrarian, or highly quotable
+- Suitable for Instagram/X/LinkedIn image posts
+
+AVOID:
+- Quotes that require context to understand
+- Sponsor reads, promos, or housekeeping
+- Inside jokes or references to unseen visuals
+- Incomplete thoughts
+
+OUTPUT FORMAT (JSON array):
+[
+  {
+    "quote": "The exact quote text from the episode",
+    "context": "Brief 5-10 word description of the moment"
+  }
+]
+
+Return ONLY valid JSON, no additional text.
+
+TRANSCRIPT:
+${transcript.fullText}`
+                    : `You are a sermon content specialist. Extract 5-7 powerful, shareable quotes from this sermon transcript.
 
 REQUIREMENTS:
 - Each quote should be self-contained and meaningful on its own
@@ -229,7 +283,38 @@ ${transcript.fullText}`;
         // Step 3: Generate social carousel (NEW)
         if (generateCarousel) {
             await step.run("generate-carousel", async () => {
-                const prompt = `You are a social media content creator for churches. Create a 5-slide Instagram/LinkedIn carousel based on this sermon.
+                const prompt = isPodcast
+                    ? `You are a social media strategist for podcasts. Create a 5-slide Instagram/LinkedIn carousel based on this podcast episode.
+
+SLIDE TYPES (in order):
+1. COVER - Eye-catching, curiosity-driven title slide
+2. QUOTE - Most quotable line from the episode
+3. LIST - 3-5 key takeaways or steps (numbered)
+4. ACTION - One practical thing the audience can do today
+5. CTA - Invitation to listen to the full episode
+
+REQUIREMENTS:
+- Each slide text must be concise (fit on a square image)
+- Use engaging, conversational language
+- Capture the episode's core insight
+- End with a listen/follow call to action
+
+OUTPUT FORMAT (JSON):
+{
+  "slides": [
+    {"type": "cover", "title": "Episode hook title", "subtitle": "Contextual subtitle"},
+    {"type": "quote", "content": "Most quotable line from the episode"},
+    {"type": "list", "content": "Key takeaways:\\n\\n1. First point\\n2. Second point\\n3. Third point"},
+    {"type": "action", "content": "One practical action for today"},
+    {"type": "cta", "title": "Full episode out now", "subtitle": "Listen on your favorite platform"}
+  ]
+}
+
+Return ONLY valid JSON.
+
+TRANSCRIPT:
+${transcript.fullText}`
+                    : `You are a social media content creator for churches. Create a 5-slide Instagram/LinkedIn carousel based on this sermon.
 
 SLIDE TYPES (in order):
 1. COVER - Eye-catching title slide
@@ -268,7 +353,48 @@ ${transcript.fullText}`;
         // Step 4: Generate discussion guide
         if (generateDiscussionGuide) {
             await step.run("generate-discussion-guide", async () => {
-                const prompt = `You are a small group ministry leader. Create a comprehensive discussion guide for small groups based on this sermon.
+                const prompt = isPodcast
+                    ? `You are a community manager for a podcast. Create a listener discussion guide for this episode (for community threads, Discord, or book-club style meetups).
+
+STRUCTURE:
+1. Opening Thought - Brief framing (2-3 sentences) setting up the conversation
+2. Key Quote - The most discussion-worthy quote from the episode
+3. Icebreaker - Fun, easy opening question related to the topic
+4. Discussion Questions - 5-7 questions that progressively go deeper
+5. Application Questions - 2-3 questions about applying the ideas
+6. Weekly Challenge - Specific action item for the week
+7. Closing Thought - Short wrap-up to end the discussion
+
+REQUIREMENTS:
+- Questions should be open-ended, not yes/no
+- Progress from reactions to interpretation to application
+- Make it practical and applicable to daily life
+
+OUTPUT FORMAT (JSON) - use these EXACT keys:
+{
+  "title": "Episode title",
+  "openingPrayer": "Opening thought framing the conversation...",
+  "keyScripture": {
+    "text": "Most discussion-worthy quote from the episode",
+    "reference": "Speaker name or 'Guest'"
+  },
+  "icebreaker": "Fun opening question...",
+  "discussionQuestions": [
+    "Question 1 about the ideas...",
+    "Question 2 going deeper..."
+  ],
+  "applicationQuestions": [
+    "How will you apply this..."
+  ],
+  "weeklyChallenge": "This week, commit to...",
+  "closingPrayer": "Closing thought to wrap up..."
+}
+
+Return ONLY valid JSON.
+
+TRANSCRIPT:
+${transcript.fullText}`
+                    : `You are a small group ministry leader. Create a comprehensive discussion guide for small groups based on this sermon.
 
 STRUCTURE:
 1. Opening Prayer - Brief prayer (2-3 sentences) setting the tone
@@ -318,7 +444,45 @@ ${transcript.fullText}`;
         // Step 5: Generate devotional
         if (generateDevotional) {
             await step.run("generate-devotional", async () => {
-                const prompt = `You are a devotional writer. Create a 5-day devotional series based on this sermon's themes.
+                const prompt = isPodcast
+                    ? `You are a growth-focused newsletter writer. Create a 5-day action series based on this podcast episode's key ideas (one short daily read, Monday-Friday).
+
+STRUCTURE FOR EACH DAY:
+- Day number and name (Monday-Friday)
+- Title (theme for that day)
+- Key idea reference (the episode concept it builds on)
+- Reflection (150-200 words exploring the theme)
+- Focus prompt (1-2 sentence journaling or thinking prompt)
+- Application Point (specific action for the day)
+
+REQUIREMENTS:
+- Each day should focus on a different idea from the episode
+- Build progressively throughout the week
+- Make reflections personal and relatable
+- Include practical, doable applications
+
+OUTPUT FORMAT (JSON) - use these EXACT keys:
+{
+  "title": "Series title",
+  "subtitle": "Brief description of the journey",
+  "days": [
+    {
+      "day": 1,
+      "dayName": "Monday",
+      "title": "Theme title for day 1",
+      "scripture": "Episode concept this builds on",
+      "reflection": "150-200 word reflection...",
+      "prayerFocus": "Journaling or thinking prompt...",
+      "applicationPoint": "Today, practice..."
+    }
+  ]
+}
+
+Return ONLY valid JSON.
+
+TRANSCRIPT:
+${transcript.fullText}`
+                    : `You are a devotional writer. Create a 5-day devotional series based on this sermon's themes.
 
 STRUCTURE FOR EACH DAY:
 - Day number and name (Monday-Friday)
@@ -365,7 +529,51 @@ ${transcript.fullText}`;
         // Step 6: Generate blog post
         if (generateBlogPost) {
             await step.run("generate-blog-post", async () => {
-                const prompt = `You are a church communications writer. Transform this sermon into a well-structured, SEO-friendly blog post.
+                const prompt = isPodcast
+                    ? `You are a podcast content repurposing writer. Transform this podcast episode into a well-structured, SEO-friendly blog post.
+
+REQUIREMENTS:
+- Length: 800-1200 words
+- Compelling, click-worthy title
+- Strong introduction hook (first paragraph should grab attention)
+- 3-4 main sections with clear subheadings
+- Pull direct quotes from the episode as pull-quotes
+- Practical action steps
+- Conclusion inviting readers to listen to the full episode
+- Conversational yet professional tone
+
+SEO BEST PRACTICES:
+- Title should include main topic keywords
+- Use subheadings (H2, H3 style)
+- Include bullet points or numbered lists
+- End with engagement prompt (question or challenge)
+
+OUTPUT FORMAT (JSON) - use these EXACT keys:
+{
+  "title": "SEO-optimized blog title",
+  "author": "Host/guest name from episode",
+  "readTime": "X min read",
+  "introduction": "Compelling opening paragraph...",
+  "sections": [
+    {
+      "heading": "Section heading",
+      "content": "Section content with paragraphs..."
+    }
+  ],
+  "keyScripture": {
+    "text": "Most quotable line from the episode",
+    "reference": "Speaker name"
+  },
+  "actionSteps": ["Step 1", "Step 2", "Step 3"],
+  "weeklyChallenge": "Specific challenge...",
+  "conclusion": "Closing thoughts inviting readers to listen to the full episode"
+}
+
+Return ONLY valid JSON.
+
+TRANSCRIPT:
+${transcript.fullText}`
+                    : `You are a church communications writer. Transform this sermon into a well-structured, SEO-friendly blog post.
 
 REQUIREMENTS:
 - Length: 800-1200 words
@@ -417,7 +625,48 @@ ${transcript.fullText}`;
         // Step 7: Generate outline
         if (generateOutline) {
             await step.run("generate-outline", async () => {
-                const prompt = `You are a sermon analyst. Create a detailed, timestamped outline of this sermon.
+                const prompt = isPodcast
+                    ? `You are a podcast producer. Create detailed, timestamped chapters for this podcast episode.
+
+STRUCTURE:
+- Intro/setup (first 5-10% of episode)
+- Main Segments (topic-by-topic breakdown)
+- Wrap-up/Outro (final section)
+
+FOR EACH SECTION INCLUDE:
+- Approximate time range (based on content flow)
+- Segment title
+- 3-5 bullet points summarizing key ideas
+- The best quote in that segment if there is one
+
+REQUIREMENTS:
+- Identify natural topic changes in the conversation
+- Capture the logical progression of ideas
+- Note stories, examples, or frameworks used
+
+OUTPUT FORMAT (JSON) - use these EXACT keys:
+{
+  "title": "Episode title",
+  "speaker": "Host/guest names",
+  "sections": [
+    {
+      "timeRange": "0:00 - 5:00",
+      "title": "Segment title",
+      "points": [
+        "Key point 1",
+        "Key point 2",
+        "Key point 3"
+      ],
+      "keyScripture": "Best quote in this segment or null"
+    }
+  ]
+}
+
+Return ONLY valid JSON.
+
+TRANSCRIPT:
+${transcript.fullText}`
+                    : `You are a sermon analyst. Create a detailed, timestamped outline of this sermon.
 
 STRUCTURE:
 - Introduction (first 10-15% of sermon)
@@ -467,7 +716,47 @@ ${transcript.fullText}`;
         // Step 8: Generate summary
         if (generateSummary) {
             await step.run("generate-summary", async () => {
-                const prompt = `You are a content summarizer. Create multiple summary formats for this sermon.
+                const prompt = isPodcast
+                    ? `You are a content summarizer. Create multiple summary formats for this podcast episode.
+
+CREATE FOUR FORMATS:
+
+1. PARAGRAPH SUMMARY (100-150 words)
+   - Comprehensive overview
+   - Main topics and key insights
+   - Standout moments mentioned
+
+2. BULLET POINTS (5-7 bullets)
+   - Key takeaways
+   - Memorable quotes
+   - Action items
+
+3. SOCIAL MEDIA CAPTION (Instagram/X)
+   - Hook in first line
+   - 2-3 key points with emojis
+   - Engagement question at end
+   - Under 300 characters ideal
+
+4. HASHTAGS (8-10 relevant hashtags)
+   - Mix of episode topic, niche, and general podcast hashtags
+
+OUTPUT FORMAT (JSON):
+{
+  "paragraph": "Full paragraph summary...",
+  "bullets": [
+    "Key point 1",
+    "Key point 2",
+    "Key point 3"
+  ],
+  "socialCaption": "Hook line with emoji\\n\\nKey points with emojis...\\n\\nEngagement question?",
+  "hashtags": ["#Tag1", "#Tag2", "#Tag3"]
+}
+
+Return ONLY valid JSON.
+
+TRANSCRIPT:
+${transcript.fullText}`
+                    : `You are a content summarizer. Create multiple summary formats for this sermon.
 
 CREATE FOUR FORMATS:
 

@@ -123,6 +123,12 @@ export const createBatch = mutation({
             startTime: v.number(),
             endTime: v.number(),
             s3Key: v.string(),
+            title: v.optional(v.string()),
+            hook: v.optional(v.string()),
+            quote: v.optional(v.string()),
+            reason: v.optional(v.string()),
+            category: v.optional(v.string()),
+            score: v.optional(v.number()),
         })),
     },
     handler: async (ctx, args) => {

@@ -25,6 +25,8 @@ import {
     Play,
     Clock,
     X,
+    Church,
+    Mic,
 } from "lucide-react";
 import { analytics } from "@/lib/posthog";
 
@@ -130,7 +132,7 @@ export function UploadSermonModal({ open, onOpenChange, onSuccess }: UploadSermo
             const data = await response.json();
             setMetadata(data);
             setYtEndTime(data.duration || 0);  // Set end time to video duration
-            analytics.trackSermonUpload("sermon", "youtube");
+            analytics.trackSermonUpload(videoType, "youtube");
         } catch (err) {
             setError(err instanceof Error ? err.message : "Failed to fetch video info");
         } finally {
@@ -157,11 +159,11 @@ export function UploadSermonModal({ open, onOpenChange, onSuccess }: UploadSermo
             }
             setSelectedFile(file);
             setError(null);
-            analytics.trackSermonUpload("sermon", "upload");
+            analytics.trackSermonUpload(videoType, "upload");
         }
 
         return true;
-    }, []);
+    }, [videoType]);
 
     // Handle file selection
     const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -197,7 +199,7 @@ export function UploadSermonModal({ open, onOpenChange, onSuccess }: UploadSermo
             // in the library with an "Uploading" badge even if modal is closed.
             const newSermonId = await createSermon({
                 organizationId: convexOrg._id,
-                title: metadata?.title || selectedFile?.name || "Untitled Sermon",
+                title: metadata?.title || selectedFile?.name || (videoType === "podcast" ? "Untitled Episode" : "Untitled Sermon"),
                 description: metadata?.description,
                 s3Key: "", // placeholder, patched below after upload
                 s3Bucket: process.env.NEXT_PUBLIC_S3_BUCKET || "josh-video-clipper",
@@ -388,7 +390,7 @@ export function UploadSermonModal({ open, onOpenChange, onSuccess }: UploadSermo
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                         <Upload className="h-5 w-5 text-[var(--color-primary)]" />
-                        Upload Sermon
+                        {videoType === "podcast" ? "Upload Podcast Episode" : "Upload Sermon"}
                     </DialogTitle>
                     <DialogDescription>
                         Upload a video file or paste a YouTube link to get started
@@ -632,46 +634,107 @@ export function UploadSermonModal({ open, onOpenChange, onSuccess }: UploadSermo
 
                         {/* Processing Config */}
                         <div className="border-t border-[var(--color-primary)]/10 pt-4 space-y-4">
-                            <div className="grid gap-4 sm:grid-cols-2">
-                                <div className="sm:col-span-2">
-                                    <label className="block text-sm font-medium text-[var(--color-text-light)] mb-2">
-                                        Video Type
-                                    </label>
-                                    <select
-                                        className="w-full h-10 rounded-[var(--radius-default)] bg-[var(--color-surface)] px-3 text-sm text-[var(--color-text-light)] border border-[var(--color-primary)]/20"
-                                        value={videoType}
-                                        onChange={(e) => setVideoType(e.target.value as "sermon" | "podcast")}
+                            {/* Content type - drives the whole processing pipeline */}
+                            <div>
+                                <label className="block text-sm font-medium text-[var(--color-text-light)] mb-2">
+                                    What are you uploading?
+                                </label>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <button
+                                        type="button"
+                                        onClick={() => setVideoType("sermon")}
+                                        className={`flex flex-col gap-1.5 rounded-xl border-2 p-3 text-left transition-all ${videoType === "sermon"
+                                            ? "border-[var(--color-primary)] bg-[var(--color-primary)]/10"
+                                            : "border-[var(--color-border)] hover:border-[var(--color-primary)]/50"
+                                            }`}
                                     >
-                                        <option value="sermon">Sermon</option>
-                                        <option value="podcast">Podcast</option>
-                                    </select>
+                                        <span className="flex items-center gap-2 font-medium text-sm text-[var(--color-text-light)]">
+                                            <Church className="h-4 w-4 text-[var(--color-primary)]" />
+                                            Sermon
+                                        </span>
+                                        <span className="text-xs text-[var(--color-text-muted)] leading-relaxed">
+                                            Tracks the preacher with a cinematic camera, cleans up room audio, finds convicting &amp; encouraging moments
+                                        </span>
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setVideoType("podcast")}
+                                        className={`flex flex-col gap-1.5 rounded-xl border-2 p-3 text-left transition-all ${videoType === "podcast"
+                                            ? "border-[var(--color-primary)] bg-[var(--color-primary)]/10"
+                                            : "border-[var(--color-border)] hover:border-[var(--color-primary)]/50"
+                                            }`}
+                                    >
+                                        <span className="flex items-center gap-2 font-medium text-sm text-[var(--color-text-light)]">
+                                            <Mic className="h-4 w-4 text-[var(--color-primary)]" />
+                                            Podcast
+                                        </span>
+                                        <span className="text-xs text-[var(--color-text-muted)] leading-relaxed">
+                                            Follows whoever is speaking, finds stories, hot takes &amp; Q&amp;A moments made for Reels and Shorts
+                                        </span>
+                                    </button>
                                 </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-[var(--color-text-light)] mb-2">
-                                        Clips to Generate
-                                    </label>
+                            </div>
+
+                            {/* Caption style */}
+                            <div>
+                                <label className="block text-sm font-medium text-[var(--color-text-light)] mb-2">
+                                    Caption Style
+                                </label>
+                                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                                    {([
+                                        { value: "karaoke", label: "Highlight", hint: "Active word lights up", recommended: true },
+                                        { value: "pop", label: "Pop", hint: "Highlight + subtle scale", recommended: false },
+                                        { value: "fade", label: "Fade", hint: "Phrases fade in", recommended: false },
+                                        { value: "none", label: "Minimal", hint: "Clean static text", recommended: false },
+                                    ] as const).map((style) => (
+                                        <button
+                                            key={style.value}
+                                            type="button"
+                                            onClick={() => setCaptionEffect(style.value)}
+                                            className={`relative rounded-xl border-2 p-2.5 text-center transition-all ${captionEffect === style.value
+                                                ? "border-[var(--color-primary)] bg-[var(--color-primary)]/10"
+                                                : "border-[var(--color-border)] hover:border-[var(--color-primary)]/50"
+                                                }`}
+                                        >
+                                            {style.recommended && (
+                                                <span className="absolute -top-2 left-1/2 -translate-x-1/2 rounded-full bg-[var(--color-primary)] px-1.5 py-px text-[9px] font-semibold uppercase tracking-wide text-white">
+                                                    Best
+                                                </span>
+                                            )}
+                                            {/* Mini caption preview */}
+                                            <span className="block font-display text-[13px] font-extrabold uppercase tracking-tight text-[var(--color-text-light)]">
+                                                {style.value === "karaoke" || style.value === "pop" ? (
+                                                    <>YOUR <span className="text-[#FFD700]">STORY</span></>
+                                                ) : style.value === "fade" ? (
+                                                    <span className="opacity-70">YOUR STORY</span>
+                                                ) : (
+                                                    <>YOUR STORY</>
+                                                )}
+                                            </span>
+                                            <span className="mt-1 block text-[10px] leading-tight text-[var(--color-text-muted)]">
+                                                {style.hint}
+                                            </span>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-[var(--color-text-light)] mb-2">
+                                    Clips to Generate
+                                </label>
+                                <div className="flex items-center gap-3">
                                     <Input
                                         type="number"
                                         min={1}
                                         max={10}
                                         value={clipCount}
                                         onChange={(e) => setClipCount(Number(e.target.value))}
+                                        className="w-24"
                                     />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-[var(--color-text-light)] mb-2">
-                                        Caption Effect
-                                    </label>
-                                    <select
-                                        className="w-full p-2 rounded-md bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-text-light)]"
-                                        value={captionEffect}
-                                        onChange={(e) => setCaptionEffect(e.target.value as "none" | "pop" | "fade" | "karaoke")}
-                                    >
-                                        <option value="karaoke">Karaoke (word-by-word highlight)</option>
-                                        <option value="pop">Pop (words scale up)</option>
-                                        <option value="fade">Fade (smooth fade-in)</option>
-                                        <option value="none">None (static text)</option>
-                                    </select>
+                                    <span className="text-xs text-[var(--color-text-muted)]">
+                                        The AI ranks every moment it finds and renders the top {clipCount}. You can always generate more later.
+                                    </span>
                                 </div>
                             </div>
                         </div>
@@ -701,35 +764,61 @@ export function UploadSermonModal({ open, onOpenChange, onSuccess }: UploadSermo
                 )}
 
                 {step === "processing" && (
-                    <div className="py-8 text-center space-y-4">
-                        <Loader2 className="h-12 w-12 mx-auto text-[var(--color-primary)] animate-spin" />
-                        <div>
-                            <h3 className="font-medium text-[var(--color-text-light)] mb-2">
-                                Processing your sermon...
+                    <div className="py-8 space-y-6">
+                        <div className="text-center">
+                            <div className="relative mx-auto mb-4 h-14 w-14">
+                                <div className="absolute inset-0 rounded-full bg-[var(--color-primary)]/20 animate-ping" />
+                                <div className="relative flex h-14 w-14 items-center justify-center rounded-full bg-[var(--color-primary)]/10">
+                                    <Loader2 className="h-7 w-7 text-[var(--color-primary)] animate-spin" />
+                                </div>
+                            </div>
+                            <h3 className="font-medium text-[var(--color-text-light)] mb-1">
+                                {videoType === "podcast" ? "Getting your episode ready…" : "Getting your sermon ready…"}
                             </h3>
                             <p className="text-sm text-[var(--color-text-muted)]">
-                                This may take a few minutes
+                                You can close this — processing continues in the background
                             </p>
                         </div>
-                        <div className="w-full bg-[var(--color-surface)] rounded-full h-2">
+
+                        {/* Stage checklist */}
+                        <div className="mx-auto max-w-xs space-y-2.5">
+                            {[
+                                { label: "Uploading video", threshold: 10 },
+                                { label: "Handing off to the AI pipeline", threshold: 60 },
+                                { label: "Transcription & clip discovery queued", threshold: 100 },
+                            ].map((stage) => {
+                                const done = uploadProgress >= stage.threshold;
+                                const active = !done && uploadProgress >= stage.threshold - 50;
+                                return (
+                                    <div key={stage.label} className="flex items-center gap-2.5 text-sm">
+                                        {done ? (
+                                            <CheckCircle className="h-4 w-4 shrink-0 text-green-500" />
+                                        ) : active ? (
+                                            <Loader2 className="h-4 w-4 shrink-0 animate-spin text-[var(--color-primary)]" />
+                                        ) : (
+                                            <div className="h-4 w-4 shrink-0 rounded-full border-2 border-[var(--color-border)]" />
+                                        )}
+                                        <span className={done ? "text-[var(--color-text-light)]" : "text-[var(--color-text-muted)]"}>
+                                            {stage.label}
+                                        </span>
+                                    </div>
+                                );
+                            })}
+                        </div>
+
+                        <div className="w-full bg-[var(--color-surface)] rounded-full h-1.5">
                             <div
-                                className="bg-[var(--color-primary)] h-2 rounded-full transition-all duration-500"
+                                className="bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-secondary)] h-1.5 rounded-full transition-all duration-500"
                                 style={{ width: `${uploadProgress}%` }}
                             />
                         </div>
-                        <p className="text-sm text-[var(--color-text-muted)]">
-                            {uploadProgress < 50 ? "Uploading video..." :
-                                uploadProgress < 80 ? "Processing started..." :
-                                    "Finishing up..."}
-                        </p>
-                        <Button
-                            variant="outline"
-                            onClick={handleCancel}
-                            className="mt-4"
-                        >
-                            <X className="h-4 w-4 mr-2" />
-                            Cancel
-                        </Button>
+
+                        <div className="text-center">
+                            <Button variant="outline" onClick={handleCancel}>
+                                <X className="h-4 w-4 mr-2" />
+                                Cancel
+                            </Button>
+                        </div>
                     </div>
                 )}
 
@@ -738,10 +827,11 @@ export function UploadSermonModal({ open, onOpenChange, onSuccess }: UploadSermo
                         <CheckCircle className="h-12 w-12 mx-auto text-green-500" />
                         <div>
                             <h3 className="font-medium text-[var(--color-text-light)] mb-2">
-                                Upload Complete!
+                                {videoType === "podcast" ? "Episode uploaded!" : "Sermon uploaded!"}
                             </h3>
                             <p className="text-sm text-[var(--color-text-muted)]">
-                                Your sermon is being processed. You&apos;ll be notified when clips are ready.
+                                The AI is transcribing, hunting for the best moments, and rendering your clips.
+                                Track live progress on the {videoType === "podcast" ? "episode" : "sermon"} page.
                             </p>
                         </div>
                         <div className="flex justify-center gap-2">
@@ -750,7 +840,7 @@ export function UploadSermonModal({ open, onOpenChange, onSuccess }: UploadSermo
                             </Button>
                             <Button onClick={handleViewSermon}>
                                 <Play className="h-4 w-4 mr-2" />
-                                View Sermon
+                                {videoType === "podcast" ? "View Episode" : "View Sermon"}
                             </Button>
                         </div>
                     </div>

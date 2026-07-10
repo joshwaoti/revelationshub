@@ -77,6 +77,10 @@ export default function SermonOutlinePage({ params }: { params: Promise<{ id: st
 
     const data = outline ? parseContent(outline.content) : null;
 
+    // Podcasts get chapter language; sermons keep outline language
+    const isPodcast = sermon?.videoType === "podcast";
+    const outlineName = isPodcast ? "Episode Chapters" : "Sermon Outline";
+
     return (
         <div className="min-h-[calc(100vh-48px)]">
             {/* Header */}
@@ -90,7 +94,7 @@ export default function SermonOutlinePage({ params }: { params: Promise<{ id: st
                     </Link>
                     <div>
                         <h1 className="font-display text-xl sm:text-2xl font-bold text-[var(--color-text-light)]">
-                            Sermon Outline
+                            {outlineName}
                         </h1>
                         <p className="text-sm text-[var(--color-text-muted)]">
                             {sermon?.title}
@@ -117,7 +121,7 @@ export default function SermonOutlinePage({ params }: { params: Promise<{ id: st
                         No Outline Generated Yet
                     </h3>
                     <p className="text-[var(--color-text-muted)] mb-6">
-                        Generate a structured outline from your sermon
+                        Generate {isPodcast ? "timestamped chapters from your episode" : "a structured outline from your sermon"}
                     </p>
                     <Button onClick={handleRegenerate} disabled={isGenerating}>
                         {isGenerating ? (
@@ -166,7 +170,7 @@ export default function SermonOutlinePage({ params }: { params: Promise<{ id: st
                         <div className="border-b border-[var(--color-border)] pb-6 mb-6 mt-6 sm:mt-0">
                             <div className="flex items-center gap-2 text-[var(--color-text-muted)] mb-2">
                                 <FileText className="h-4 w-4" />
-                                <span className="text-sm">Sermon Outline</span>
+                                <span className="text-sm">{outlineName}</span>
                             </div>
                             <h2 className="font-display text-2xl sm:text-3xl font-bold text-[var(--color-text-light)]">
                                 {data.title || sermon?.title}
@@ -213,7 +217,7 @@ export default function SermonOutlinePage({ params }: { params: Promise<{ id: st
                                         )}
                                         {section.keyScripture && (
                                             <p className="text-sm text-[var(--color-text-muted)] italic border-l-2 border-[var(--color-secondary)] pl-3">
-                                                Key Scripture: {section.keyScripture}
+                                                {isPodcast ? "Key Quote" : "Key Scripture"}: {section.keyScripture}
                                             </p>
                                         )}
                                     </div>

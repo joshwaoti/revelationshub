@@ -87,6 +87,12 @@ export default defineSchema({
     clips: defineTable({
         sermonId: v.id("sermons"),
         title: v.optional(v.string()),
+        // Editorial metadata from AI moment analysis
+        hook: v.optional(v.string()),
+        quote: v.optional(v.string()),
+        reason: v.optional(v.string()),
+        category: v.optional(v.string()),
+        score: v.optional(v.number()),
         startTime: v.number(),
         endTime: v.number(),
         s3Key: v.string(),
@@ -125,6 +131,14 @@ export default defineSchema({
         sermonId: v.id("sermons"),
         startTime: v.number(),
         endTime: v.number(),
+        // Editorial metadata from AI moment analysis (used for ranking,
+        // display, and matching moments in the transcript chat)
+        title: v.optional(v.string()),
+        hook: v.optional(v.string()),
+        quote: v.optional(v.string()),
+        reason: v.optional(v.string()),
+        category: v.optional(v.string()),
+        score: v.optional(v.number()),
         // Track if this moment has been used to create a clip
         used: v.boolean(),
         createdAt: v.number(),
@@ -182,6 +196,27 @@ export default defineSchema({
         error: v.optional(v.string()),
         createdAt: v.number(),
         completedAt: v.optional(v.number()),
+    }).index("by_sermon", ["sermonId"]),
+
+    // Transcript chat - conversation with the AI about a sermon/podcast
+    // transcript. The assistant can locate stored moments or trigger new
+    // clip generation, tracked via the optional action payload.
+    chatMessages: defineTable({
+        sermonId: v.id("sermons"),
+        role: v.union(v.literal("user"), v.literal("assistant")),
+        content: v.string(),
+        // Set when the assistant kicked off a clip generation
+        action: v.optional(v.object({
+            type: v.union(
+                v.literal("clip_from_moment"),
+                v.literal("clip_from_transcript")
+            ),
+            startTime: v.number(),
+            endTime: v.number(),
+            title: v.optional(v.string()),
+            momentId: v.optional(v.id("viralMoments")),
+        })),
+        createdAt: v.number(),
     }).index("by_sermon", ["sermonId"]),
 
     // Subscriptions (synced from Paystack)

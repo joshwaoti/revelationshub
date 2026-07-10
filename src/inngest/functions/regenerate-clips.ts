@@ -1,6 +1,39 @@
 import { inngest } from "../client";
 import { generateText } from "@/lib/server/llm";
 
+// Editorial metadata carried on stored viral moments and rendered clips
+interface MomentMetadata {
+    title?: string;
+    hook?: string;
+    quote?: string;
+    reason?: string;
+    category?: string;
+    score?: number;
+}
+
+interface StoredMoment extends MomentMetadata {
+    _id: string;
+    startTime: number;
+    endTime: number;
+}
+
+interface RenderedClip extends MomentMetadata {
+    start: number;
+    end: number;
+    s3_key: string;
+}
+
+function clipMetadata(source: MomentMetadata) {
+    return {
+        title: source.title ?? undefined,
+        hook: source.hook ?? undefined,
+        quote: source.quote ?? undefined,
+        reason: source.reason ?? undefined,
+        category: source.category ?? undefined,
+        score: source.score ?? undefined,
+    };
+}
+
 // Regenerate clips for a sermon based on text description or time range
 // This function calls the Modal API to generate new clips, appending to existing ones
 export const regenerateClips = inngest.createFunction(
@@ -104,7 +137,7 @@ export const regenerateClips = inngest.createFunction(
                 }),
             });
 
-            let unusedMoments: Array<{ _id: string; startTime: number; endTime: number }> = [];
+            let unusedMoments: StoredMoment[] = [];
             if (unusedMomentsResponse.ok) {
                 const momentsResult = await unusedMomentsResponse.json();
                 unusedMoments = momentsResult.value || momentsResult || [];
@@ -135,7 +168,7 @@ export const regenerateClips = inngest.createFunction(
         // For "auto" mode, check if we have unused viral moments to use
         // This avoids re-analyzing the video
         let useStoredMoments = false;
-        let momentsToProcess: Array<{ _id: string; startTime: number; endTime: number }> = [];
+        let momentsToProcess: StoredMoment[] = [];
 
         if (locationType === "auto" && unusedMoments && unusedMoments.length > 0) {
             console.log(`Found ${unusedMoments.length} unused viral moments for auto-regeneration`);
@@ -275,7 +308,7 @@ Return ONLY the JSON, no other text.`;
         }
 
         // Step 4: Process clips - either from stored moments or via Modal API
-        let processedClips: Array<{ start: number; end: number; s3_key: string }> = [];
+        let processedClips: RenderedClip[] = [];
 
         if (useStoredMoments && momentsToProcess.length > 0) {
             // Process each stored moment through Modal (just for clip creation, no re-analysis)
@@ -326,12 +359,17 @@ Return ONLY the JSON, no other text.`;
                     return result as {
                         status: string;
                         clips_created: number;
-                        clip_moments: Array<{ start: number; end: number; s3_key: string }>;
+                        clip_moments: RenderedClip[];
                     };
                 });
 
                 if (clipResult.clip_moments && clipResult.clip_moments.length > 0) {
-                    processedClips.push(...clipResult.clip_moments);
+                    // Attach the stored moment's editorial metadata (title,
+                    // score, etc.) to the rendered clip
+                    processedClips.push(...clipResult.clip_moments.map(clip => ({
+                        ...clip,
+                        ...clipMetadata(moment),
+                    })));
                 }
             }
 
@@ -416,7 +454,7 @@ Return ONLY the JSON, no other text.`;
                 return result as {
                     status: string;
                     clips_created: number;
-                    clip_moments: Array<{ start: number; end: number; s3_key: string }>;
+                    clip_moments: RenderedClip[];
                 };
             });
 
@@ -447,6 +485,7 @@ Return ONLY the JSON, no other text.`;
                             startTime: clip.start,
                             endTime: clip.end,
                             s3Key: clip.s3_key,
+                            ...clipMetadata(clip),
                         })),
                     },
                     format: "json",

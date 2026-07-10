@@ -8,6 +8,12 @@ export const saveBatch = mutation({
         moments: v.array(v.object({
             startTime: v.number(),
             endTime: v.number(),
+            title: v.optional(v.string()),
+            hook: v.optional(v.string()),
+            quote: v.optional(v.string()),
+            reason: v.optional(v.string()),
+            category: v.optional(v.string()),
+            score: v.optional(v.number()),
         })),
         // Which moments were actually turned into clips (by their indices)
         usedIndices: v.array(v.number()),
@@ -21,8 +27,7 @@ export const saveBatch = mutation({
             const moment = moments[i];
             await ctx.db.insert("viralMoments", {
                 sermonId,
-                startTime: moment.startTime,
-                endTime: moment.endTime,
+                ...moment,
                 used: usedSet.has(i),
                 createdAt: Date.now(),
             });

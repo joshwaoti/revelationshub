@@ -236,6 +236,7 @@ export default function VideoEditorPage({ params }: PageProps) {
                                 <DownloadClipButton
                                     clipS3Key={clip.s3Key}
                                     clipTitle={`${sermon?.title || "sermon"}_clip_${Math.floor(clip.startTime)}`}
+                                    className="w-full"
                                 />
                             </CardContent>
                         </Card>
