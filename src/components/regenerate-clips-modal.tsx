@@ -28,6 +28,7 @@ interface RegenerateClipsModalProps {
     onOpenChange: (open: boolean) => void;
     sermonId: Id<"sermons">;
     sermonTitle: string;
+    defaultCaptionEffect?: CaptionEffect;
     onSuccess?: () => void;
 }
 
@@ -39,6 +40,7 @@ export function RegenerateClipsModal({
     onOpenChange,
     sermonId,
     sermonTitle,
+    defaultCaptionEffect = "karaoke",
     onSuccess,
 }: RegenerateClipsModalProps) {
     // State
@@ -56,8 +58,8 @@ export function RegenerateClipsModal({
     const [startTime, setStartTime] = useState("");
     const [endTime, setEndTime] = useState("");
 
-    // Caption effect
-    const [captionEffect, setCaptionEffect] = useState<CaptionEffect>("karaoke");
+    // Caption effect - defaults to the style the user last picked for this video
+    const [captionEffect, setCaptionEffect] = useState<CaptionEffect>(defaultCaptionEffect);
 
     // Number of clips
     const [clipCount, setClipCount] = useState(3);
@@ -171,7 +173,7 @@ export function RegenerateClipsModal({
         setClipDescription("");
         setStartTime("");
         setEndTime("");
-        setCaptionEffect("karaoke");
+        setCaptionEffect(defaultCaptionEffect);
         setClipCount(3);
         setError(null);
         setSuccess(false);

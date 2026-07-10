@@ -24,6 +24,13 @@ import {
 import Link from "next/link";
 import { toast } from "sonner";
 import { useGenerateContent } from "@/hooks/use-generate-content";
+import {
+    wrapCanvasText,
+    drawCoverImage,
+    drawLegibilityOverlay,
+    downloadBlob,
+    loadImageFromFile,
+} from "@/lib/canvas-export";
 
 type CarouselSlide = {
     type?: "cover" | "quote" | "list" | "action" | "cta" | string;
@@ -97,34 +104,6 @@ const SLIDE_LABELS: Record<string, string> = {
     cta: "Call to Action",
 };
 
-// Word-wrap helper for canvas text
-function wrapCanvasText(
-    ctx: CanvasRenderingContext2D,
-    text: string,
-    maxWidth: number
-): string[] {
-    const lines: string[] = [];
-    for (const rawLine of text.split("\n")) {
-        const words = rawLine.split(/\s+/).filter(Boolean);
-        if (words.length === 0) {
-            lines.push("");
-            continue;
-        }
-        let line = "";
-        for (const word of words) {
-            const candidate = line ? `${line} ${word}` : word;
-            if (ctx.measureText(candidate).width > maxWidth && line) {
-                lines.push(line);
-                line = word;
-            } else {
-                line = candidate;
-            }
-        }
-        if (line) lines.push(line);
-    }
-    return lines;
-}
-
 // Render one slide to a 1080x1080 canvas and return a PNG blob
 async function renderSlidePng(
     slide: CarouselSlide,
@@ -145,18 +124,8 @@ async function renderSlidePng(
 
     // Background
     if (useImage && backgroundImage) {
-        // cover-fit the user's image
-        const scale = Math.max(SIZE / backgroundImage.width, SIZE / backgroundImage.height);
-        const w = backgroundImage.width * scale;
-        const h = backgroundImage.height * scale;
-        ctx.drawImage(backgroundImage, (SIZE - w) / 2, (SIZE - h) / 2, w, h);
-        // Legibility overlay
-        const overlay = ctx.createLinearGradient(0, 0, 0, SIZE);
-        overlay.addColorStop(0, "rgba(8, 10, 20, 0.45)");
-        overlay.addColorStop(0.55, "rgba(8, 10, 20, 0.62)");
-        overlay.addColorStop(1, "rgba(8, 10, 20, 0.8)");
-        ctx.fillStyle = overlay;
-        ctx.fillRect(0, 0, SIZE, SIZE);
+        drawCoverImage(ctx, backgroundImage, SIZE);
+        drawLegibilityOverlay(ctx, SIZE);
     } else {
         const gradient = ctx.createLinearGradient(0, 0, SIZE, SIZE);
         const stops = theme.stops;
@@ -329,7 +298,7 @@ export default function SocialCarouselPage({ params }: { params: Promise<{ id: s
         }
     };
 
-    const handleImageUpload = (file: File) => {
+    const handleImageUpload = async (file: File) => {
         if (!file.type.startsWith("image/")) {
             toast.error("Please choose an image file");
             return;
@@ -338,18 +307,14 @@ export default function SocialCarouselPage({ params }: { params: Promise<{ id: s
             toast.error("Image must be under 15MB");
             return;
         }
-        const reader = new FileReader();
-        reader.onload = () => {
-            const url = reader.result as string;
-            const img = new Image();
-            img.onload = () => {
-                backgroundImageRef.current = img;
-                setBackgroundImageUrl(url);
-                toast.success("Background image applied to all slides");
-            };
-            img.src = url;
-        };
-        reader.readAsDataURL(file);
+        try {
+            const { image, dataUrl } = await loadImageFromFile(file);
+            backgroundImageRef.current = image;
+            setBackgroundImageUrl(dataUrl);
+            toast.success("Background image applied to all slides");
+        } catch {
+            toast.error("Couldn't load that image");
+        }
     };
 
     const clearImage = () => {
@@ -392,14 +357,7 @@ export default function SocialCarouselPage({ params }: { params: Promise<{ id: s
                     slides.length
                 );
                 if (!blob) continue;
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement("a");
-                a.href = url;
-                a.download = `carousel_slide_${i + 1}.png`;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
+                downloadBlob(blob, `carousel_slide_${i + 1}.png`);
                 // Give the browser a beat between downloads
                 if (indices.length > 1) await new Promise((r) => setTimeout(r, 350));
             }

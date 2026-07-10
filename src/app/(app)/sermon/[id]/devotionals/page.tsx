@@ -8,7 +8,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { RefreshCw, Download, Share2, Calendar, Heart, Loader2, Sparkles, ChevronLeft } from "lucide-react";
 import Link from "next/link";
+import { toast } from "sonner";
 import { useGenerateContent } from "@/hooks/use-generate-content";
+import { openPrintWindow, shareText, PrintSection } from "@/lib/print-export";
 
 type DevotionalDay = {
     day?: number;
@@ -75,6 +77,52 @@ export default function DevotionalsPage({ params }: { params: Promise<{ id: stri
     const seriesName = isPodcast ? "5-Day Series" : "Weekly Devotional";
     const seriesNoun = isPodcast ? "action series" : "devotional";
 
+    // Build the printable/shareable representation of the series
+    const buildPrintSections = (): PrintSection[] => {
+        if (!data?.days) return [];
+        return data.days.map((day, index) => {
+            const bodyParts: string[] = [];
+            if (day.scripture) bodyParts.push(`${isPodcast ? "Builds on" : "Scripture"}: ${day.scripture}`);
+            if (day.reflection) bodyParts.push(day.reflection);
+            if (day.prayerFocus) bodyParts.push(`${isPodcast ? "Reflection prompt" : "Prayer focus"}: ${day.prayerFocus}`);
+            return {
+                heading: `${day.dayName || `Day ${day.day ?? index + 1}`}${day.title ? ` — ${day.title}` : ""}`,
+                body: bodyParts.join("\n\n"),
+            };
+        });
+    };
+
+    const seriesAsText = (): string => {
+        const lines: string[] = [data?.title || seriesName, data?.subtitle || "", ""];
+        for (const section of buildPrintSections()) {
+            if (section.heading) lines.push(section.heading.toUpperCase());
+            if (section.body) lines.push(section.body);
+            lines.push("");
+        }
+        return lines.join("\n").trim();
+    };
+
+    const handleExportPdf = () => {
+        if (!data) return;
+        const opened = openPrintWindow({
+            title: data.title || seriesName,
+            subtitle: data.subtitle || `Based on "${sermon?.title ?? ""}"`,
+            sections: buildPrintSections(),
+        });
+        if (!opened) {
+            toast.error("Popup blocked", { description: "Allow popups for this site to export." });
+        } else {
+            toast.info("Choose “Save as PDF” in the print dialog", { duration: 5000 });
+        }
+    };
+
+    const handleShare = async () => {
+        if (!data) return;
+        const result = await shareText(data.title || seriesName, seriesAsText());
+        if (result === "copied") toast.success(`${seriesName} copied to clipboard`);
+        else if (result === "failed") toast.error("Sharing isn't available in this browser");
+    };
+
     return (
         <div className="min-h-[calc(100vh-48px)]">
             {/* Header */}
@@ -96,11 +144,11 @@ export default function DevotionalsPage({ params }: { params: Promise<{ id: stri
                     </div>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                    <Button variant="outline" size="sm">
+                    <Button variant="outline" size="sm" onClick={handleExportPdf} disabled={!data}>
                         <Download className="h-4 w-4 mr-2" />
                         Export PDF
                     </Button>
-                    <Button variant="outline" size="sm">
+                    <Button variant="outline" size="sm" onClick={handleShare} disabled={!data}>
                         <Share2 className="h-4 w-4 mr-2" />
                         Share
                     </Button>

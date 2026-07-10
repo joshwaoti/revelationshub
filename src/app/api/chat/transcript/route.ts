@@ -21,6 +21,7 @@ interface SermonRecord {
     videoType?: "sermon" | "podcast";
     s3Key?: string;
     duration?: number;
+    preferredCaptionEffect?: "none" | "pop" | "fade" | "karaoke";
 }
 
 interface TranscriptRecord {
@@ -277,7 +278,8 @@ User: ${message.trim()}`;
                     name: "sermon/regenerate-clips",
                     data: {
                         sermonId,
-                        captionEffect: "karaoke",
+                        // Reuse the caption style the user last picked for this video
+                        captionEffect: sermon.preferredCaptionEffect ?? "karaoke",
                         clipCount: 1,
                         locationType: "time",
                         startTime: start,

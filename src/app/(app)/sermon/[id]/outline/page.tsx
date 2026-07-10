@@ -11,6 +11,7 @@ import { RefreshCw, Download, Copy, FileText, Clock, Loader2, Sparkles, ChevronL
 import Link from "next/link";
 import { useGenerateContent } from "@/hooks/use-generate-content";
 import { toast } from "sonner";
+import { openPrintWindow, PrintSection } from "@/lib/print-export";
 
 type OutlineSection = {
     timeRange?: string;
@@ -51,8 +52,9 @@ export default function SermonOutlinePage({ params }: { params: Promise<{ id: st
     };
 
     const handleCopy = () => {
-        if (outline?.content) {
-            navigator.clipboard.writeText(outline.content);
+        const text = outlineAsText();
+        if (text) {
+            navigator.clipboard.writeText(text);
             toast.success("Copied to clipboard!");
         }
     };
@@ -81,6 +83,48 @@ export default function SermonOutlinePage({ params }: { params: Promise<{ id: st
     const isPodcast = sermon?.videoType === "podcast";
     const outlineName = isPodcast ? "Episode Chapters" : "Sermon Outline";
 
+    // Formatted plain-text version (used by Copy - raw JSON is useless to paste)
+    const outlineAsText = (): string => {
+        if (!data) return "";
+        const lines: string[] = [data.title || sermon?.title || outlineName];
+        if (data.speaker) lines.push(data.speaker);
+        lines.push("");
+        for (const section of data.sections || []) {
+            lines.push(`${section.timeRange ? `[${section.timeRange}] ` : ""}${section.title || ""}`.trim());
+            for (const point of section.points || []) {
+                lines.push(`  • ${point}`);
+            }
+            if (section.keyScripture) {
+                lines.push(`  ${isPodcast ? "Key quote" : "Key scripture"}: ${section.keyScripture}`);
+            }
+            lines.push("");
+        }
+        return lines.join("\n").trim();
+    };
+
+    const handleExport = () => {
+        if (!data) return;
+        const sections: PrintSection[] = (data.sections || []).map((section) => ({
+            heading: `${section.timeRange ? `${section.timeRange} · ` : ""}${section.title || ""}`.trim(),
+            list: [
+                ...(section.points || []),
+                ...(section.keyScripture
+                    ? [`${isPodcast ? "Key quote" : "Key scripture"}: ${section.keyScripture}`]
+                    : []),
+            ],
+        }));
+        const opened = openPrintWindow({
+            title: data.title || sermon?.title || outlineName,
+            subtitle: `${outlineName}${data.speaker ? ` · ${data.speaker}` : ""}`,
+            sections,
+        });
+        if (!opened) {
+            toast.error("Popup blocked", { description: "Allow popups for this site to export." });
+        } else {
+            toast.info("Choose “Save as PDF” in the print dialog", { duration: 5000 });
+        }
+    };
+
     return (
         <div className="min-h-[calc(100vh-48px)]">
             {/* Header */}
@@ -102,11 +146,11 @@ export default function SermonOutlinePage({ params }: { params: Promise<{ id: st
                     </div>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                    <Button variant="outline" size="sm" onClick={handleCopy}>
+                    <Button variant="outline" size="sm" onClick={handleCopy} disabled={!data}>
                         <Copy className="h-4 w-4 mr-2" />
                         Copy
                     </Button>
-                    <Button variant="outline" size="sm">
+                    <Button variant="outline" size="sm" onClick={handleExport} disabled={!data}>
                         <Download className="h-4 w-4 mr-2" />
                         Export
                     </Button>

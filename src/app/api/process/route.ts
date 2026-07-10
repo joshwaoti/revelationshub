@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { inngest } from "@/inngest/client";
-import { convexQuery } from "@/lib/server/convex-http";
+import { convexQuery, convexMutation } from "@/lib/server/convex-http";
 
 // Processing configuration type
 interface ProcessConfig {
@@ -95,6 +95,14 @@ export async function POST(req: NextRequest) {
                     { error: "S3 key does not belong to this organization" },
                     { status: 403 }
                 );
+            }
+
+            // Remember the caption style for future generations (chat, regenerate)
+            if (config.captionEffect) {
+                await convexMutation("sermons:setCaptionPreference", {
+                    sermonId: config.sermonId,
+                    captionEffect: config.captionEffect,
+                }).catch((error) => console.warn("Failed to save caption preference:", error));
             }
 
             // Send event to Inngest to start Modal processing

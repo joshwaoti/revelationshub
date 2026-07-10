@@ -66,6 +66,14 @@ export default defineSchema({
             v.literal("cancelled")
         ),
         videoType: v.union(v.literal("sermon"), v.literal("podcast")),
+        // Last caption style the user chose - reused by the transcript chat
+        // and as the default for future clip generation
+        preferredCaptionEffect: v.optional(v.union(
+            v.literal("none"),
+            v.literal("pop"),
+            v.literal("fade"),
+            v.literal("karaoke")
+        )),
         createdAt: v.number(),
         createdBy: v.id("members"),
     })

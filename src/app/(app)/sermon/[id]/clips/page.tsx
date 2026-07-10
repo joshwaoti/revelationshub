@@ -491,6 +491,7 @@ export default function ClipsPage({ params }: { params: Promise<{ id: string }> 
                 onOpenChange={setRegenerateModalOpen}
                 sermonId={sermon._id}
                 sermonTitle={sermon.title}
+                defaultCaptionEffect={sermon.preferredCaptionEffect}
                 onSuccess={() => {
                     setIsGenerating(true);
                     // The clips will auto-refresh via Convex's live queries
