@@ -111,6 +111,22 @@ export const patchS3Key = mutation({
     },
 });
 
+// Remember the caption style the user last chose for this video
+export const setCaptionPreference = mutation({
+    args: {
+        sermonId: v.id("sermons"),
+        captionEffect: v.union(
+            v.literal("none"),
+            v.literal("pop"),
+            v.literal("fade"),
+            v.literal("karaoke")
+        ),
+    },
+    handler: async (ctx, args) => {
+        await ctx.db.patch(args.sermonId, { preferredCaptionEffect: args.captionEffect });
+    },
+});
+
 // Delete a sermon and all related data
 export const remove = mutation({
     args: { sermonId: v.id("sermons") },

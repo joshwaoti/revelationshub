@@ -46,3 +46,7 @@ async function callConvexHttp<T>(
 export async function convexQuery<T>(path: string, args: Record<string, unknown>) {
     return callConvexHttp<T>("query", path, args);
 }
+
+export async function convexMutation<T>(path: string, args: Record<string, unknown>) {
+    return callConvexHttp<T>("mutation", path, args);
+}

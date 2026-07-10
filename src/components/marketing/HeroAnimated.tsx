@@ -113,7 +113,7 @@ export function HeroAnimated() {
             className="mx-auto mt-6 max-w-2xl text-pretty text-base leading-7 text-[var(--color-text-muted)] sm:text-lg sm:leading-8"
             variants={itemVariants}
           >
-            Transform one sermon into accurate clips, modern captions, discussion guides, devotionals, quote graphics, carousels, blog posts, and podcast assets. Built for modern churches.
+            Turn one sermon or podcast episode into ranked clips with broadcast-quality captions, quote graphics, carousels, guides, devotionals, and blog posts — then chat with the transcript to clip any moment you want.
           </motion.p>
 
           {/* CTAs */}
@@ -145,14 +145,14 @@ export function HeroAnimated() {
             variants={itemVariants}
           >
             <p className="text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]/80 mb-5">
-              Empowering churches of all sizes
+              Empowering churches and podcasters of all sizes
             </p>
             <div className="flex items-center gap-3 sm:gap-4 flex-wrap justify-center max-w-2xl">
               {[
                 { name: "Grace Family Church", icon: "✝️" },
                 { name: "New Life Community", icon: "🕊️" },
+                { name: "The Daily Walk Podcast", icon: "🎙️" },
                 { name: "Cornerstone Chapel", icon: "⛪" },
-                { name: "Redeemer Church", icon: "☀️" },
                 { name: "Elevation Group", icon: "🔥" },
               ].map((church, i) => (
                 <motion.div

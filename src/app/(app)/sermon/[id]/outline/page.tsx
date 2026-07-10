@@ -11,6 +11,7 @@ import { RefreshCw, Download, Copy, FileText, Clock, Loader2, Sparkles, ChevronL
 import Link from "next/link";
 import { useGenerateContent } from "@/hooks/use-generate-content";
 import { toast } from "sonner";
+import { openPrintWindow, PrintSection } from "@/lib/print-export";
 
 type OutlineSection = {
     timeRange?: string;
@@ -51,8 +52,9 @@ export default function SermonOutlinePage({ params }: { params: Promise<{ id: st
     };
 
     const handleCopy = () => {
-        if (outline?.content) {
-            navigator.clipboard.writeText(outline.content);
+        const text = outlineAsText();
+        if (text) {
+            navigator.clipboard.writeText(text);
             toast.success("Copied to clipboard!");
         }
     };
@@ -77,6 +79,52 @@ export default function SermonOutlinePage({ params }: { params: Promise<{ id: st
 
     const data = outline ? parseContent(outline.content) : null;
 
+    // Podcasts get chapter language; sermons keep outline language
+    const isPodcast = sermon?.videoType === "podcast";
+    const outlineName = isPodcast ? "Episode Chapters" : "Sermon Outline";
+
+    // Formatted plain-text version (used by Copy - raw JSON is useless to paste)
+    const outlineAsText = (): string => {
+        if (!data) return "";
+        const lines: string[] = [data.title || sermon?.title || outlineName];
+        if (data.speaker) lines.push(data.speaker);
+        lines.push("");
+        for (const section of data.sections || []) {
+            lines.push(`${section.timeRange ? `[${section.timeRange}] ` : ""}${section.title || ""}`.trim());
+            for (const point of section.points || []) {
+                lines.push(`  • ${point}`);
+            }
+            if (section.keyScripture) {
+                lines.push(`  ${isPodcast ? "Key quote" : "Key scripture"}: ${section.keyScripture}`);
+            }
+            lines.push("");
+        }
+        return lines.join("\n").trim();
+    };
+
+    const handleExport = () => {
+        if (!data) return;
+        const sections: PrintSection[] = (data.sections || []).map((section) => ({
+            heading: `${section.timeRange ? `${section.timeRange} · ` : ""}${section.title || ""}`.trim(),
+            list: [
+                ...(section.points || []),
+                ...(section.keyScripture
+                    ? [`${isPodcast ? "Key quote" : "Key scripture"}: ${section.keyScripture}`]
+                    : []),
+            ],
+        }));
+        const opened = openPrintWindow({
+            title: data.title || sermon?.title || outlineName,
+            subtitle: `${outlineName}${data.speaker ? ` · ${data.speaker}` : ""}`,
+            sections,
+        });
+        if (!opened) {
+            toast.error("Popup blocked", { description: "Allow popups for this site to export." });
+        } else {
+            toast.info("Choose “Save as PDF” in the print dialog", { duration: 5000 });
+        }
+    };
+
     return (
         <div className="min-h-[calc(100vh-48px)]">
             {/* Header */}
@@ -90,7 +138,7 @@ export default function SermonOutlinePage({ params }: { params: Promise<{ id: st
                     </Link>
                     <div>
                         <h1 className="font-display text-xl sm:text-2xl font-bold text-[var(--color-text-light)]">
-                            Sermon Outline
+                            {outlineName}
                         </h1>
                         <p className="text-sm text-[var(--color-text-muted)]">
                             {sermon?.title}
@@ -98,11 +146,11 @@ export default function SermonOutlinePage({ params }: { params: Promise<{ id: st
                     </div>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                    <Button variant="outline" size="sm" onClick={handleCopy}>
+                    <Button variant="outline" size="sm" onClick={handleCopy} disabled={!data}>
                         <Copy className="h-4 w-4 mr-2" />
                         Copy
                     </Button>
-                    <Button variant="outline" size="sm">
+                    <Button variant="outline" size="sm" onClick={handleExport} disabled={!data}>
                         <Download className="h-4 w-4 mr-2" />
                         Export
                     </Button>
@@ -117,7 +165,7 @@ export default function SermonOutlinePage({ params }: { params: Promise<{ id: st
                         No Outline Generated Yet
                     </h3>
                     <p className="text-[var(--color-text-muted)] mb-6">
-                        Generate a structured outline from your sermon
+                        Generate {isPodcast ? "timestamped chapters from your episode" : "a structured outline from your sermon"}
                     </p>
                     <Button onClick={handleRegenerate} disabled={isGenerating}>
                         {isGenerating ? (
@@ -166,7 +214,7 @@ export default function SermonOutlinePage({ params }: { params: Promise<{ id: st
                         <div className="border-b border-[var(--color-border)] pb-6 mb-6 mt-6 sm:mt-0">
                             <div className="flex items-center gap-2 text-[var(--color-text-muted)] mb-2">
                                 <FileText className="h-4 w-4" />
-                                <span className="text-sm">Sermon Outline</span>
+                                <span className="text-sm">{outlineName}</span>
                             </div>
                             <h2 className="font-display text-2xl sm:text-3xl font-bold text-[var(--color-text-light)]">
                                 {data.title || sermon?.title}
@@ -213,7 +261,7 @@ export default function SermonOutlinePage({ params }: { params: Promise<{ id: st
                                         )}
                                         {section.keyScripture && (
                                             <p className="text-sm text-[var(--color-text-muted)] italic border-l-2 border-[var(--color-secondary)] pl-3">
-                                                Key Scripture: {section.keyScripture}
+                                                {isPodcast ? "Key Quote" : "Key Scripture"}: {section.keyScripture}
                                             </p>
                                         )}
                                     </div>

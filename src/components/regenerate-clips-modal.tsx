@@ -28,6 +28,7 @@ interface RegenerateClipsModalProps {
     onOpenChange: (open: boolean) => void;
     sermonId: Id<"sermons">;
     sermonTitle: string;
+    defaultCaptionEffect?: CaptionEffect;
     onSuccess?: () => void;
 }
 
@@ -39,6 +40,7 @@ export function RegenerateClipsModal({
     onOpenChange,
     sermonId,
     sermonTitle,
+    defaultCaptionEffect = "karaoke",
     onSuccess,
 }: RegenerateClipsModalProps) {
     // State
@@ -56,8 +58,8 @@ export function RegenerateClipsModal({
     const [startTime, setStartTime] = useState("");
     const [endTime, setEndTime] = useState("");
 
-    // Caption effect
-    const [captionEffect, setCaptionEffect] = useState<CaptionEffect>("karaoke");
+    // Caption effect - defaults to the style the user last picked for this video
+    const [captionEffect, setCaptionEffect] = useState<CaptionEffect>(defaultCaptionEffect);
 
     // Number of clips
     const [clipCount, setClipCount] = useState(3);
@@ -171,7 +173,7 @@ export function RegenerateClipsModal({
         setClipDescription("");
         setStartTime("");
         setEndTime("");
-        setCaptionEffect("karaoke");
+        setCaptionEffect(defaultCaptionEffect);
         setClipCount(3);
         setError(null);
         setSuccess(false);
@@ -257,9 +259,12 @@ export function RegenerateClipsModal({
 
                         {/* Auto mode info */}
                         {locationType === "auto" && (
-                            <div className="p-3 bg-[var(--color-primary)]/5 border border-[var(--color-primary)]/20 rounded-lg">
+                            <div className="p-3 bg-[var(--color-primary)]/5 border border-[var(--color-primary)]/20 rounded-lg space-y-1.5">
                                 <p className="text-sm text-[var(--color-text-light)]">
-                                    🎯 The system will automatically find the best moments in your sermon to create engaging clips.
+                                    🎯 Unused high-scoring moments from the AI analysis are rendered first — no re-analysis needed.
+                                </p>
+                                <p className="text-xs text-[var(--color-text-muted)]">
+                                    Looking for one exact moment? Try <span className="font-medium text-[var(--color-primary)]">Ask the Transcript</span> in the sidebar and describe it in plain words.
                                 </p>
                             </div>
                         )}
@@ -323,10 +328,10 @@ export function RegenerateClipsModal({
                             </Label>
                             <div className="grid grid-cols-4 gap-2">
                                 {[
-                                    { value: "karaoke", label: "Karaoke" },
-                                    { value: "pop", label: "Pop" },
-                                    { value: "fade", label: "Fade" },
-                                    { value: "none", label: "None" },
+                                    { value: "karaoke", label: "Highlight", hint: "Word lights up" },
+                                    { value: "pop", label: "Pop", hint: "Highlight + scale" },
+                                    { value: "fade", label: "Fade", hint: "Phrases fade in" },
+                                    { value: "none", label: "Minimal", hint: "Static text" },
                                 ].map((effect) => (
                                     <button
                                         key={effect.value}
@@ -338,6 +343,7 @@ export function RegenerateClipsModal({
                                             }`}
                                     >
                                         <p className="font-medium text-sm text-[var(--color-text-light)]">{effect.label}</p>
+                                        <p className="text-[10px] text-[var(--color-text-muted)]">{effect.hint}</p>
                                     </button>
                                 ))}
                             </div>

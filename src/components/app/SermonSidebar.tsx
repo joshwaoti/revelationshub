@@ -19,48 +19,69 @@ import {
     Layers,
     Menu,
     X,
+    MessageSquare,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
+import { useQuery } from "convex/react";
+import { api } from "../../../convex/_generated/api";
+import { Id } from "../../../convex/_generated/dataModel";
 
-const sidebarSections = [
-    {
-        title: "Social Media",
-        iconColor: "var(--color-primary)",
-        items: [
-            { href: "clips", icon: Wand2, label: "Magic Clips" },
-            { href: "quotes", icon: Image, label: "Image Quotes" },
-            { href: "carousel", icon: LayoutGrid, label: "Social Carousel" },
-        ],
-    },
-    {
-        title: "Discipleship",
-        iconColor: "var(--color-secondary)",
-        items: [
-            { href: "discussion-guide", icon: BookOpen, label: "Discussion Guide" },
-            { href: "devotionals", icon: Heart, label: "Devotionals" },
-            { href: "outline", icon: FileText, label: "Sermon Outline" },
-        ],
-    },
-    {
-        title: "More Content",
-        iconColor: "var(--color-success)",
-        items: [
-            { href: "transcription", icon: Type, label: "Transcription" },
-            { href: "blog", icon: FileEdit, label: "Blog Post" },
-            { href: "podcast", icon: Mic, label: "Podcast Audio" },
-            { href: "summaries", icon: List, label: "Summaries" },
-        ],
-    },
-    {
-        title: "Editor",
-        iconColor: "var(--color-primary)",
-        items: [
-            { href: "editor", icon: Film, label: "Video Editor" },
-            { href: "templates", icon: Layers, label: "Templates" },
-        ],
-    },
-];
+// Sidebar labels adapt to the content type - podcasts get podcast language,
+// sermons keep ministry language. Routes stay identical.
+function buildSidebarSections(isPodcast: boolean) {
+    return [
+        {
+            title: "Social Media",
+            iconColor: "var(--color-primary)",
+            items: [
+                { href: "clips", icon: Wand2, label: "Magic Clips" },
+                { href: "chat", icon: MessageSquare, label: "Ask the Transcript" },
+                { href: "quotes", icon: Image, label: "Image Quotes" },
+                { href: "carousel", icon: LayoutGrid, label: "Social Carousel" },
+            ],
+        },
+        {
+            title: isPodcast ? "Audience" : "Discipleship",
+            iconColor: "var(--color-secondary)",
+            items: [
+                {
+                    href: "discussion-guide",
+                    icon: BookOpen,
+                    label: isPodcast ? "Listener Guide" : "Discussion Guide",
+                },
+                {
+                    href: "devotionals",
+                    icon: Heart,
+                    label: isPodcast ? "5-Day Series" : "Devotionals",
+                },
+                {
+                    href: "outline",
+                    icon: FileText,
+                    label: isPodcast ? "Episode Chapters" : "Sermon Outline",
+                },
+            ],
+        },
+        {
+            title: "More Content",
+            iconColor: "var(--color-success)",
+            items: [
+                { href: "transcription", icon: Type, label: "Transcription" },
+                { href: "blog", icon: FileEdit, label: "Blog Post" },
+                { href: "podcast", icon: Mic, label: isPodcast ? "Audio Version" : "Podcast Audio" },
+                { href: "summaries", icon: List, label: "Summaries" },
+            ],
+        },
+        {
+            title: "Editor",
+            iconColor: "var(--color-primary)",
+            items: [
+                { href: "editor", icon: Film, label: "Video Editor" },
+                { href: "templates", icon: Layers, label: "Templates" },
+            ],
+        },
+    ];
+}
 
 // Animation variants
 const sidebarVariants = {
@@ -86,6 +107,13 @@ export function SermonSidebar() {
     const params = useParams();
     const sermonId = params.id;
     const [mobileOpen, setMobileOpen] = useState(false);
+
+    const sermon = useQuery(
+        api.sermons.getById,
+        typeof sermonId === "string" ? { sermonId: sermonId as Id<"sermons"> } : "skip"
+    );
+    const isPodcast = sermon?.videoType === "podcast";
+    const sidebarSections = buildSidebarSections(isPodcast);
 
     const sidebarContent = (
         <>

@@ -7,7 +7,9 @@ import { Id } from "../../../../../../convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { RefreshCw, Download, Printer, Share2, Loader2, MessageSquare, Sparkles, ChevronLeft } from "lucide-react";
 import Link from "next/link";
+import { toast } from "sonner";
 import { useGenerateContent } from "@/hooks/use-generate-content";
+import { openPrintWindow, shareText, PrintSection } from "@/lib/print-export";
 
 export default function DiscussionGuidePage({ params }: { params: Promise<{ id: string }> }) {
     const resolvedParams = use(params);
@@ -54,6 +56,84 @@ export default function DiscussionGuidePage({ params }: { params: Promise<{ id: 
 
     const guide = discussionGuide ? parseContent(discussionGuide.content) : null;
 
+    // Podcast episodes get listener-guide language; sermons keep ministry language
+    const isPodcast = sermon?.videoType === "podcast";
+    const labels = isPodcast
+        ? {
+            pageTitle: "Listener Guide",
+            subtitle: "Listener Discussion Guide",
+            opening: "Opening Thought",
+            key: "Key Quote",
+            closing: "Closing Thought",
+            emptyBody: "Generate a discussion guide from your episode transcript",
+            generateCta: "Generate Listener Guide",
+        }
+        : {
+            pageTitle: "Discussion Guide",
+            subtitle: "Small Group Discussion Guide",
+            opening: "Opening Prayer",
+            key: "Key Scripture",
+            closing: "Closing Prayer",
+            emptyBody: "Generate a discussion guide from your sermon transcript",
+            generateCta: "Generate Discussion Guide",
+        };
+
+    // Build the printable/shareable representation of the guide
+    const buildPrintSections = (): PrintSection[] => {
+        if (!guide) return [];
+        const sections: PrintSection[] = [];
+        if (guide.openingPrayer) sections.push({ heading: labels.opening, body: guide.openingPrayer });
+        if (guide.keyScripture) {
+            sections.push({
+                heading: labels.key,
+                quote: { text: guide.keyScripture.text, cite: guide.keyScripture.reference },
+            });
+        }
+        const questions: string[] = [];
+        if (guide.icebreaker) questions.push(`Icebreaker: ${guide.icebreaker}`);
+        if (Array.isArray(guide.discussionQuestions)) questions.push(...guide.discussionQuestions);
+        if (questions.length > 0) sections.push({ heading: "Discussion Questions", list: questions, ordered: true });
+        if (Array.isArray(guide.applicationQuestions) && guide.applicationQuestions.length > 0) {
+            sections.push({ heading: "Application Questions", list: guide.applicationQuestions, ordered: true });
+        }
+        if (guide.weeklyChallenge) sections.push({ heading: "Weekly Challenge", body: guide.weeklyChallenge });
+        if (guide.closingPrayer) sections.push({ heading: labels.closing, body: guide.closingPrayer });
+        return sections;
+    };
+
+    const guideAsText = (): string => {
+        const lines: string[] = [`${guide?.title || sermon?.title || labels.pageTitle}`, ""];
+        for (const section of buildPrintSections()) {
+            if (section.heading) lines.push(section.heading.toUpperCase());
+            if (section.body) lines.push(section.body);
+            if (section.quote) lines.push(`"${section.quote.text}"${section.quote.cite ? ` — ${section.quote.cite}` : ""}`);
+            if (section.list) section.list.forEach((item, i) => lines.push(`${i + 1}. ${item}`));
+            lines.push("");
+        }
+        return lines.join("\n").trim();
+    };
+
+    const handlePrint = (savingPdf: boolean) => {
+        if (!guide) return;
+        const opened = openPrintWindow({
+            title: guide.title || sermon?.title || labels.pageTitle,
+            subtitle: labels.subtitle,
+            sections: buildPrintSections(),
+        });
+        if (!opened) {
+            toast.error("Popup blocked", { description: "Allow popups for this site to print or export." });
+        } else if (savingPdf) {
+            toast.info("Choose “Save as PDF” in the print dialog", { duration: 5000 });
+        }
+    };
+
+    const handleShare = async () => {
+        if (!guide) return;
+        const result = await shareText(guide.title || labels.pageTitle, guideAsText());
+        if (result === "copied") toast.success("Guide copied to clipboard");
+        else if (result === "failed") toast.error("Sharing isn't available in this browser");
+    };
+
     return (
         <div className="min-h-screen bg-[var(--color-scripture-bg)]">
             {/* Header */}
@@ -67,7 +147,7 @@ export default function DiscussionGuidePage({ params }: { params: Promise<{ id: 
                     </Link>
                     <div>
                         <h1 className="font-display text-xl sm:text-2xl font-bold text-[var(--color-text-light)]">
-                            Discussion Guide
+                            {labels.pageTitle}
                         </h1>
                         <p className="text-sm text-[var(--color-text-muted)]">
                             {sermon?.title}
@@ -75,15 +155,15 @@ export default function DiscussionGuidePage({ params }: { params: Promise<{ id: 
                     </div>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                    <Button variant="outline" size="sm">
+                    <Button variant="outline" size="sm" onClick={() => handlePrint(false)} disabled={!guide}>
                         <Printer className="h-4 w-4 mr-2" />
                         Print
                     </Button>
-                    <Button variant="outline" size="sm">
+                    <Button variant="outline" size="sm" onClick={() => handlePrint(true)} disabled={!guide}>
                         <Download className="h-4 w-4 mr-2" />
                         Export PDF
                     </Button>
-                    <Button variant="outline" size="sm">
+                    <Button variant="outline" size="sm" onClick={handleShare} disabled={!guide}>
                         <Share2 className="h-4 w-4 mr-2" />
                         Share
                     </Button>
@@ -95,10 +175,10 @@ export default function DiscussionGuidePage({ params }: { params: Promise<{ id: 
                 <div className="text-center py-16">
                     <MessageSquare className="h-12 w-12 mx-auto text-[var(--color-text-muted)] mb-4" />
                     <h3 className="text-lg font-semibold text-[var(--color-text-light)] mb-2">
-                        No Discussion Guide Generated Yet
+                        No {labels.pageTitle} Generated Yet
                     </h3>
                     <p className="text-[var(--color-text-muted)] mb-6">
-                        Generate a discussion guide from your sermon transcript
+                        {labels.emptyBody}
                     </p>
                     <Button onClick={handleRegenerate} disabled={isGenerating}>
                         {isGenerating ? (
@@ -106,7 +186,7 @@ export default function DiscussionGuidePage({ params }: { params: Promise<{ id: 
                         ) : (
                             <Sparkles className="h-4 w-4 mr-2" />
                         )}
-                        {isGenerating ? "Generating..." : "Generate Discussion Guide"}
+                        {isGenerating ? "Generating..." : labels.generateCta}
                     </Button>
                 </div>
             )}
@@ -151,7 +231,7 @@ export default function DiscussionGuidePage({ params }: { params: Promise<{ id: 
                                     {guide.title || sermon?.title}
                                 </h2>
                                 <p className="text-gray-600 dark:text-[var(--color-text-muted)]">
-                                    Small Group Discussion Guide
+                                    {labels.subtitle}
                                 </p>
                             </div>
 
@@ -160,7 +240,7 @@ export default function DiscussionGuidePage({ params }: { params: Promise<{ id: 
                                 <section>
                                     <h3 className="font-display text-lg sm:text-xl font-semibold text-gray-900 dark:text-[var(--color-text-light)] mb-3 flex items-center gap-2">
                                         <span className="h-6 w-6 rounded-full bg-[var(--color-success)] text-white text-sm flex items-center justify-center shrink-0">1</span>
-                                        Opening Prayer
+                                        {labels.opening}
                                     </h3>
                                     <p className="text-gray-700 dark:text-[var(--color-text-light)] leading-relaxed italic">
                                         &quot;{guide.openingPrayer}&quot;
@@ -173,7 +253,7 @@ export default function DiscussionGuidePage({ params }: { params: Promise<{ id: 
                                 <section>
                                     <h3 className="font-display text-lg sm:text-xl font-semibold text-gray-900 dark:text-[var(--color-text-light)] mb-3 flex items-center gap-2">
                                         <span className="h-6 w-6 rounded-full bg-[var(--color-success)] text-white text-sm flex items-center justify-center shrink-0">2</span>
-                                        Key Scripture
+                                        {labels.key}
                                     </h3>
                                     <blockquote className="border-l-4 border-[var(--color-primary)] pl-4 py-2 bg-[var(--color-primary)]/5 rounded-r">
                                         <p className="text-gray-700 dark:text-[var(--color-text-light)] italic">
@@ -226,7 +306,7 @@ export default function DiscussionGuidePage({ params }: { params: Promise<{ id: 
                                 <section>
                                     <h3 className="font-display text-lg sm:text-xl font-semibold text-gray-900 dark:text-[var(--color-text-light)] mb-3 flex items-center gap-2">
                                         <span className="h-6 w-6 rounded-full bg-[var(--color-success)] text-white text-sm flex items-center justify-center shrink-0">5</span>
-                                        Closing Prayer
+                                        {labels.closing}
                                     </h3>
                                     <p className="text-gray-700 dark:text-[var(--color-text-light)] leading-relaxed italic">
                                         &quot;{guide.closingPrayer}&quot;

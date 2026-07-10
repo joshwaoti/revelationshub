@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { inngest } from "@/inngest/client";
-import { convexQuery } from "@/lib/server/convex-http";
+import { convexQuery, convexMutation } from "@/lib/server/convex-http";
 
 // Request payload type
 interface RegenerateClipsRequest {
@@ -84,6 +84,14 @@ export async function POST(req: NextRequest) {
         }
 
         const clipCount = Math.min(Math.max(payload.clipCount || 3, 1), 10);
+
+        // Remember the caption style for future generations (chat, defaults)
+        if (payload.captionEffect) {
+            await convexMutation("sermons:setCaptionPreference", {
+                sermonId: payload.sermonId,
+                captionEffect: payload.captionEffect,
+            }).catch((error) => console.warn("Failed to save caption preference:", error));
+        }
 
         // Send event to Inngest to regenerate clips
         const event = await inngest.send({

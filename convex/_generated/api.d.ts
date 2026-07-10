@@ -9,6 +9,7 @@
  */
 
 import type * as brandKits from "../brandKits.js";
+import type * as chatMessages from "../chatMessages.js";
 import type * as clips from "../clips.js";
 import type * as generatedContent from "../generatedContent.js";
 import type * as members from "../members.js";
@@ -26,6 +27,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   brandKits: typeof brandKits;
+  chatMessages: typeof chatMessages;
   clips: typeof clips;
   generatedContent: typeof generatedContent;
   members: typeof members;

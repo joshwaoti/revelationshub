@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useGenerateContent } from "@/hooks/use-generate-content";
+import { ProcessingPipeline } from "@/components/app/ProcessingPipeline";
 
 // Animation variants
 const containerVariants = {
@@ -241,25 +242,19 @@ export default function SermonDashboardPage({ params }: { params: Promise<{ id: 
                 </div>
             </motion.div>
 
-            {/* Processing Status Banner */}
-            {isProcessing && (
-                <motion.div
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="bg-[var(--color-primary)]/10 border border-[var(--color-primary)]/20 rounded-lg p-4"
-                >
-                    <div className="flex items-center gap-3">
-                        <Loader2 className="h-5 w-5 animate-spin text-[var(--color-primary)]" />
-                        <div>
-                            <p className="font-medium text-[var(--color-text-light)]">
-                                Your sermon is being processed
-                            </p>
-                            <p className="text-sm text-[var(--color-text-muted)]">
-                                This may take a few minutes. Clips and content will appear automatically when ready.
-                            </p>
-                        </div>
-                    </div>
-                </motion.div>
+            {/* Live processing pipeline - stages tick over via Convex reactivity */}
+            {(isProcessing || sermon.status === "failed") && (
+                <ProcessingPipeline
+                    status={sermon.status}
+                    isPodcast={sermon.videoType === "podcast"}
+                    hasTranscript={Boolean(transcriptSummary?.exists)}
+                    clipCounts={clipCounts}
+                    contentReadyCount={
+                        contentCounts
+                            ? Object.values(contentCounts).reduce((sum, n) => sum + n, 0)
+                            : 0
+                    }
+                />
             )}
 
             {/* Bento Grid */}

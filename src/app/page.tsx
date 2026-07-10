@@ -35,7 +35,7 @@ const workflow = [
   {
     icon: Upload,
     title: "Import the message",
-    copy: "Upload a sermon file or bring in a YouTube message with title, thumbnail, duration, and transcript context.",
+    copy: "Upload a sermon or podcast episode, or bring in a YouTube video with title, thumbnail, duration, and transcript context.",
   },
   {
     icon: FileText,
@@ -45,12 +45,12 @@ const workflow = [
   {
     icon: Wand2,
     title: "Find the moments",
-    copy: "Ranked sermon moments stay tied to timestamp, speaker framing, and regeneration options.",
+    copy: "Every moment is scored for virality and stored — the best get rendered, the rest wait for you to call on them.",
   },
   {
     icon: Layers,
     title: "Publish the week",
-    copy: "Clips, guides, carousels, blogs, podcasts, and social graphics move from one sermon workspace.",
+    copy: "Clips, guides, carousels, blogs, and social graphics move from one workspace — or ask the transcript chat for the exact moment you want.",
   },
 ];
 
@@ -92,6 +92,10 @@ const operationsWithIcons = [
 
 const faqs = [
   {
+    question: "Does it work for podcasts too?",
+    answer: "Yes. Podcasts get their own pipeline: active-speaker framing for multi-person shows, clip selection tuned for stories, hot takes and Q&A, plus show notes, chapters, and listener guides instead of church-specific content.",
+  },
+  {
     question: "Can we use sermons already on YouTube?",
     answer: "Yes. The app supports YouTube metadata and download-to-S3 processing, with transcript fallback when captions are available.",
   },
@@ -122,7 +126,7 @@ export default function HomePage() {
     "name": "RevelationsHub",
     "applicationCategory": "MultimediaApplication",
     "operatingSystem": "All",
-    "description": "Transform sermons into accurate clips, modern captions, discussion guides, devotionals, quote graphics, carousels, blogs, and podcast assets. Built for churches.",
+    "description": "Transform sermons and podcast episodes into ranked clips with broadcast-quality captions, discussion guides, devotionals, quote graphics, carousels, and blogs. Built for churches and creators.",
     "offers": {
       "@type": "Offer",
       "price": "0.00",

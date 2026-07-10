@@ -8,7 +8,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { RefreshCw, Download, Share2, Calendar, Heart, Loader2, Sparkles, ChevronLeft } from "lucide-react";
 import Link from "next/link";
+import { toast } from "sonner";
 import { useGenerateContent } from "@/hooks/use-generate-content";
+import { openPrintWindow, shareText, PrintSection } from "@/lib/print-export";
 
 type DevotionalDay = {
     day?: number;
@@ -70,6 +72,57 @@ export default function DevotionalsPage({ params }: { params: Promise<{ id: stri
 
     const data = devotional ? parseContent(devotional.content) : null;
 
+    // Podcasts get a growth/action series; sermons keep devotional language
+    const isPodcast = sermon?.videoType === "podcast";
+    const seriesName = isPodcast ? "5-Day Series" : "Weekly Devotional";
+    const seriesNoun = isPodcast ? "action series" : "devotional";
+
+    // Build the printable/shareable representation of the series
+    const buildPrintSections = (): PrintSection[] => {
+        if (!data?.days) return [];
+        return data.days.map((day, index) => {
+            const bodyParts: string[] = [];
+            if (day.scripture) bodyParts.push(`${isPodcast ? "Builds on" : "Scripture"}: ${day.scripture}`);
+            if (day.reflection) bodyParts.push(day.reflection);
+            if (day.prayerFocus) bodyParts.push(`${isPodcast ? "Reflection prompt" : "Prayer focus"}: ${day.prayerFocus}`);
+            return {
+                heading: `${day.dayName || `Day ${day.day ?? index + 1}`}${day.title ? ` — ${day.title}` : ""}`,
+                body: bodyParts.join("\n\n"),
+            };
+        });
+    };
+
+    const seriesAsText = (): string => {
+        const lines: string[] = [data?.title || seriesName, data?.subtitle || "", ""];
+        for (const section of buildPrintSections()) {
+            if (section.heading) lines.push(section.heading.toUpperCase());
+            if (section.body) lines.push(section.body);
+            lines.push("");
+        }
+        return lines.join("\n").trim();
+    };
+
+    const handleExportPdf = () => {
+        if (!data) return;
+        const opened = openPrintWindow({
+            title: data.title || seriesName,
+            subtitle: data.subtitle || `Based on "${sermon?.title ?? ""}"`,
+            sections: buildPrintSections(),
+        });
+        if (!opened) {
+            toast.error("Popup blocked", { description: "Allow popups for this site to export." });
+        } else {
+            toast.info("Choose “Save as PDF” in the print dialog", { duration: 5000 });
+        }
+    };
+
+    const handleShare = async () => {
+        if (!data) return;
+        const result = await shareText(data.title || seriesName, seriesAsText());
+        if (result === "copied") toast.success(`${seriesName} copied to clipboard`);
+        else if (result === "failed") toast.error("Sharing isn't available in this browser");
+    };
+
     return (
         <div className="min-h-[calc(100vh-48px)]">
             {/* Header */}
@@ -83,7 +136,7 @@ export default function DevotionalsPage({ params }: { params: Promise<{ id: stri
                     </Link>
                     <div>
                         <h1 className="font-display text-xl sm:text-2xl font-bold text-[var(--color-text-light)]">
-                            Weekly Devotional
+                            {seriesName}
                         </h1>
                         <p className="text-sm text-[var(--color-text-muted)]">
                             Based on &quot;{sermon?.title}&quot;
@@ -91,11 +144,11 @@ export default function DevotionalsPage({ params }: { params: Promise<{ id: stri
                     </div>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                    <Button variant="outline" size="sm">
+                    <Button variant="outline" size="sm" onClick={handleExportPdf} disabled={!data}>
                         <Download className="h-4 w-4 mr-2" />
                         Export PDF
                     </Button>
-                    <Button variant="outline" size="sm">
+                    <Button variant="outline" size="sm" onClick={handleShare} disabled={!data}>
                         <Share2 className="h-4 w-4 mr-2" />
                         Share
                     </Button>
@@ -107,10 +160,10 @@ export default function DevotionalsPage({ params }: { params: Promise<{ id: stri
                 <div className="text-center py-16">
                     <Calendar className="h-12 w-12 mx-auto text-[var(--color-text-muted)] mb-4" />
                     <h3 className="text-lg font-semibold text-[var(--color-text-light)] mb-2">
-                        No Devotional Generated Yet
+                        No {seriesName} Generated Yet
                     </h3>
                     <p className="text-[var(--color-text-muted)] mb-6">
-                        Generate a 5-day devotional from your sermon
+                        Generate a 5-day {seriesNoun} from your {isPodcast ? "episode" : "sermon"}
                     </p>
                     <Button onClick={handleRegenerate} disabled={isGenerating}>
                         {isGenerating ? (
@@ -118,7 +171,7 @@ export default function DevotionalsPage({ params }: { params: Promise<{ id: stri
                         ) : (
                             <Sparkles className="h-4 w-4 mr-2" />
                         )}
-                        {isGenerating ? "Generating..." : "Generate Devotional"}
+                        {isGenerating ? "Generating..." : `Generate ${seriesName}`}
                     </Button>
                 </div>
             )}
@@ -128,7 +181,7 @@ export default function DevotionalsPage({ params }: { params: Promise<{ id: stri
                 <div className="text-center py-16">
                     <Loader2 className="h-12 w-12 mx-auto text-[var(--color-primary)] mb-4 animate-spin" />
                     <h3 className="text-lg font-semibold text-[var(--color-text-light)] mb-2">
-                        Generating Devotional...
+                        Generating {seriesName}...
                     </h3>
                     <p className="text-[var(--color-text-muted)]">
                         This may take a few moments
@@ -159,7 +212,7 @@ export default function DevotionalsPage({ params }: { params: Promise<{ id: stri
                         <div className="text-center border-b border-[var(--color-border)] pb-6 mb-8 mt-6 sm:mt-0">
                             <div className="inline-flex items-center gap-2 text-[var(--color-secondary)] mb-2">
                                 <Calendar className="h-4 w-4" />
-                                <span className="text-sm">5-Day Devotional</span>
+                                <span className="text-sm">{seriesName}</span>
                             </div>
                             <h2 className="font-display text-2xl sm:text-3xl font-bold text-[var(--color-text-light)]">
                                 {data.title || sermon?.title}
@@ -194,7 +247,7 @@ export default function DevotionalsPage({ params }: { params: Promise<{ id: stri
                                                 </h3>
                                             </div>
                                             <p className="text-sm text-[var(--color-text-muted)] mb-3">
-                                                Scripture: {day.scripture}
+                                                {isPodcast ? "Builds on" : "Scripture"}: {day.scripture}
                                             </p>
                                             <div className="bg-[var(--color-surface)] rounded-[var(--radius-default)] p-4 border border-[var(--color-border)]">
                                                 <p className="text-sm text-[var(--color-text-light)] leading-relaxed">
@@ -204,7 +257,7 @@ export default function DevotionalsPage({ params }: { params: Promise<{ id: stri
                                                     <div className="mt-4 pt-3 border-t border-[var(--color-border)]">
                                                         <p className="text-xs font-medium text-[var(--color-primary)] flex items-center gap-1">
                                                             <Heart className="h-3 w-3" />
-                                                            Prayer Focus
+                                                            {isPodcast ? "Reflection Prompt" : "Prayer Focus"}
                                                         </p>
                                                         <p className="text-sm text-[var(--color-text-light)] mt-1 italic">
                                                             &quot;{day.prayerFocus}&quot;
