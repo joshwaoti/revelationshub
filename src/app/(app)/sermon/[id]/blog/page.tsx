@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { useGenerateContent } from "@/hooks/use-generate-content";
+import { MarkdownText } from "@/components/MarkdownText";
 import Link from "next/link";
 import {
     ChevronLeft,
@@ -385,9 +386,12 @@ export default function BlogPostPage({ params }: { params: Promise<{ id: string 
                                     placeholder="Introduction..."
                                 />
                             ) : displayData.introduction && (
-                                <p className="text-[var(--color-text-light)] leading-relaxed mb-6">
-                                    {displayData.introduction}
-                                </p>
+                                <div className="mb-6">
+                                    <MarkdownText
+                                        text={displayData.introduction}
+                                        className="text-[var(--color-text-light)] leading-relaxed mb-4 last:mb-0"
+                                    />
+                                </div>
                             )}
 
                             {/* Sections */}
@@ -421,8 +425,11 @@ export default function BlogPostPage({ params }: { params: Promise<{ id: string 
                                             <h3 className="font-display text-xl font-semibold text-[var(--color-text-light)] mt-8 mb-4">
                                                 {section.heading}
                                             </h3>
-                                            <div className="text-[var(--color-text-light)] leading-relaxed mb-6 whitespace-pre-wrap">
-                                                {section.content}
+                                            <div className="mb-6">
+                                                <MarkdownText
+                                                    text={section.content}
+                                                    className="text-[var(--color-text-light)] leading-relaxed mb-4 last:mb-0"
+                                                />
                                             </div>
                                         </>
                                     )}
@@ -470,9 +477,10 @@ export default function BlogPostPage({ params }: { params: Promise<{ id: string 
                                             className="min-h-[80px]"
                                         />
                                     ) : (
-                                        <p className="text-[var(--color-text-light)]">
-                                            {displayData.weeklyChallenge}
-                                        </p>
+                                        <MarkdownText
+                                            text={displayData.weeklyChallenge}
+                                            className="text-[var(--color-text-light)] mb-3 last:mb-0"
+                                        />
                                     )}
                                 </div>
                             )}
@@ -486,9 +494,10 @@ export default function BlogPostPage({ params }: { params: Promise<{ id: string 
                                     placeholder="Conclusion..."
                                 />
                             ) : displayData.conclusion && (
-                                <p className="text-[var(--color-text-light)] leading-relaxed">
-                                    {displayData.conclusion}
-                                </p>
+                                <MarkdownText
+                                    text={displayData.conclusion}
+                                    className="text-[var(--color-text-light)] leading-relaxed mb-4 last:mb-0"
+                                />
                             )}
                         </article>
 

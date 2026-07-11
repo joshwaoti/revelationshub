@@ -6,6 +6,8 @@ interface LogoMarkProps {
 }
 
 export function LogoMark({ className, title = "RevelationsHub" }: LogoMarkProps) {
+    // "The signal": a play triangle (the sermon) whose tip radiates three
+    // echo arcs (the week of content it becomes). One idea, reads at 16px.
     return (
         <svg
             viewBox="0 0 48 48"
@@ -13,30 +15,46 @@ export function LogoMark({ className, title = "RevelationsHub" }: LogoMarkProps)
             role="img"
             className={cn("h-10 w-10", className)}
         >
-            <defs>
-                <linearGradient id="revelationshub-mark" x1="7" y1="42" x2="41" y2="6" gradientUnits="userSpaceOnUse">
-                    <stop stopColor="#6DB1BF" />
-                    <stop offset="0.62" stopColor="#F39A9D" />
-                    <stop offset="1" stopColor="#ffeaec" />
-                </linearGradient>
-                <linearGradient id="revelationshub-beam" x1="15" y1="12" x2="34" y2="37" gradientUnits="userSpaceOnUse">
-                    <stop stopColor="#ffeaec" stopOpacity="0.95" />
-                    <stop offset="1" stopColor="#6DB1BF" stopOpacity="0.2" />
-                </linearGradient>
-            </defs>
-            <rect x="3" y="3" width="42" height="42" rx="13" fill="#1A1029" />
-            <path
-                d="M12 36V20.8C12 13.2 17.5 8 24 8s12 5.2 12 12.8V36H12Z"
-                fill="url(#revelationshub-mark)"
+            <rect
+                x="3"
+                y="3"
+                width="42"
+                height="42"
+                rx="12"
+                fill="#301A4B"
+                stroke="#FFEAEC"
+                strokeOpacity="0.14"
+                strokeWidth="1"
             />
             <path
-                d="M16 34V21.5C16 16.1 19.6 12.4 24 12.4s8 3.7 8 9.1V34H16Z"
-                fill="#1A1029"
-                opacity="0.88"
+                d="M12.5 15 L27.5 24 L12.5 33 Z"
+                fill="#FFEAEC"
+                stroke="#FFEAEC"
+                strokeWidth="3"
+                strokeLinejoin="round"
             />
-            <path d="M20 15.5 34 34H20V15.5Z" fill="url(#revelationshub-beam)" opacity="0.9" />
-            <path d="M22.3 19.2v11.2l8.4-5.6-8.4-5.6Z" fill="#ffeaec" />
-            <path d="M12 36h24" stroke="#ffeaec" strokeOpacity="0.75" strokeWidth="2.4" strokeLinecap="round" />
+            <path
+                d="M31.23 18.68 A6.5 6.5 0 0 1 31.23 29.32"
+                fill="none"
+                stroke="#6DB1BF"
+                strokeWidth="2.75"
+                strokeLinecap="round"
+            />
+            <path
+                d="M33.24 15.81 A10 10 0 0 1 33.24 32.19"
+                fill="none"
+                stroke="#F39A9D"
+                strokeWidth="2.75"
+                strokeLinecap="round"
+            />
+            <path
+                d="M35.24 12.94 A13.5 13.5 0 0 1 35.24 35.06"
+                fill="none"
+                stroke="#6DB1BF"
+                strokeOpacity="0.45"
+                strokeWidth="2.75"
+                strokeLinecap="round"
+            />
         </svg>
     );
 }

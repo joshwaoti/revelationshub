@@ -9,7 +9,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
     Share2,
-    Edit,
     Loader2,
     ChevronLeft,
     Wand2,
@@ -328,10 +327,10 @@ export default function ClipsPage({ params }: { params: Promise<{ id: string }> 
                                             </p>
                                         </div>
                                         <div className="flex items-center gap-3 text-xs text-[var(--color-text-muted)]">
-                                            <span className="font-mono">
-                                                {formatDuration(clip.endTime - clip.startTime)}
+                                            <span>
+                                                {formatDuration(clip.endTime - clip.startTime)} long
                                             </span>
-                                            <span>@ {formatTimestamp(clip.startTime)}</span>
+                                            <span>· starts at {formatTimestamp(clip.startTime)}</span>
                                             <span className="text-[var(--color-primary)]">Adding captions…</span>
                                         </div>
                                     </div>
@@ -339,7 +338,7 @@ export default function ClipsPage({ params }: { params: Promise<{ id: string }> 
                             ))}
 
                             {/* Ready clips */}
-                            {readyClips.map((clip) => (
+                            {readyClips.map((clip, index) => (
                                 <Card
                                     key={clip._id}
                                     onClick={() => setSelectedClipId(clip._id)}
@@ -351,7 +350,7 @@ export default function ClipsPage({ params }: { params: Promise<{ id: string }> 
                                     <div className="p-3">
                                         <div className="flex items-start justify-between gap-2 mb-1.5">
                                             <p className="text-sm font-medium text-[var(--color-text-light)] line-clamp-2">
-                                                {clip.title || `Clip at ${formatTimestamp(clip.startTime)}`}
+                                                {clip.title || `Highlight ${index + 1}`}
                                             </p>
                                             <ScoreBadge score={clip.score} />
                                         </div>
@@ -361,10 +360,10 @@ export default function ClipsPage({ params }: { params: Promise<{ id: string }> 
                                             </p>
                                         )}
                                         <div className="flex items-center gap-2 text-xs text-[var(--color-text-muted)]">
-                                            <span className="font-mono">
-                                                {formatDuration(clip.endTime - clip.startTime)}
+                                            <span>
+                                                {formatDuration(clip.endTime - clip.startTime)} long
                                             </span>
-                                            <span>@ {formatTimestamp(clip.startTime)}</span>
+                                            <span>· starts at {formatTimestamp(clip.startTime)}</span>
                                             {clip.category && CATEGORY_LABELS[clip.category] && (
                                                 <span className="rounded-full bg-[var(--color-primary)]/10 px-1.5 py-0.5 text-[10px] text-[var(--color-primary)]">
                                                     {CATEGORY_LABELS[clip.category]}
@@ -445,26 +444,16 @@ export default function ClipsPage({ params }: { params: Promise<{ id: string }> 
                             )}
 
                             {/* Clip Actions */}
-                            <div className="mt-4 flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                    <DownloadClipButton
-                                        clipS3Key={selectedClip.s3Key}
-                                        clipTitle={selectedClip.title || `${sermon.title}_clip_${Math.floor(selectedClip.startTime)}`}
-                                        variant="outline"
-                                        size="default"
-                                    />
-                                    <Button variant="outline" onClick={handleShare} disabled={!getClipUrl(selectedClip.s3Key)}>
-                                        <Share2 className="h-4 w-4 mr-2" />
-                                        Share
-                                    </Button>
-                                </div>
-
-                                <Link href={`/sermon/${sermonId}/editor?clip=${selectedClip._id}`}>
-                                    <Button size="lg" className="px-8 bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-secondary)] text-white hover:opacity-90">
-                                        <Edit className="h-4 w-4 mr-2" />
-                                        Open in Editor
-                                    </Button>
-                                </Link>
+                            <div className="mt-4 flex items-center gap-3">
+                                <DownloadClipButton
+                                    clipS3Key={selectedClip.s3Key}
+                                    clipTitle={selectedClip.title || `${sermon.title} highlight at ${formatTimestamp(selectedClip.startTime).replace(":", "m")}s`}
+                                    size="default"
+                                />
+                                <Button variant="outline" onClick={handleShare} disabled={!getClipUrl(selectedClip.s3Key)}>
+                                    <Share2 className="h-4 w-4 mr-2" />
+                                    Share
+                                </Button>
                             </div>
                         </>
                     ) : (

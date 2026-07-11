@@ -6,11 +6,12 @@ import { api } from "../../../../../../convex/_generated/api";
 import { Id } from "../../../../../../convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { RefreshCw, Download, Share2, Calendar, Heart, Loader2, Sparkles, ChevronLeft } from "lucide-react";
+import { RefreshCw, Download, Share2, Calendar, Heart, Loader2, Sparkles, ChevronLeft, Copy } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { useGenerateContent } from "@/hooks/use-generate-content";
 import { openPrintWindow, shareText, PrintSection } from "@/lib/print-export";
+import { copyFormatted, escapeHtml } from "@/lib/copy-formatted";
 
 type DevotionalDay = {
     day?: number;
@@ -123,6 +124,89 @@ export default function DevotionalsPage({ params }: { params: Promise<{ id: stri
         else if (result === "failed") toast.error("Sharing isn't available in this browser");
     };
 
+    // WhatsApp-style plain text for one day: *bold*, _italic_, emoji anchors.
+    const dayAsPlainText = (day: DevotionalDay, index: number): string => {
+        const lines: string[] = [];
+        const heading = `${day.dayName || `Day ${day.day ?? index + 1}`}${day.title ? ` — ${day.title}` : ""}`;
+        lines.push(`*${heading}*`);
+        if (data?.title) lines.push(`_${data.title}_`);
+        lines.push("");
+        if (day.scripture) {
+            lines.push(`📖 ${isPodcast ? "Builds on" : "Scripture"}: ${day.scripture}`);
+            lines.push("");
+        }
+        if (day.reflection) {
+            lines.push(day.reflection);
+            lines.push("");
+        }
+        if (day.prayerFocus) {
+            lines.push(`🙏 *${isPodcast ? "Reflection prompt" : "Prayer focus"}:* ${day.prayerFocus}`);
+            lines.push("");
+        }
+        lines.push(`— Based on "${sermon?.title ?? ""}"`);
+        return lines.join("\n").trim();
+    };
+
+    // Rich HTML flavor of the same day, for Notes / Docs / email.
+    const dayAsHtml = (day: DevotionalDay, index: number): string => {
+        const heading = `${day.dayName || `Day ${day.day ?? index + 1}`}${day.title ? ` — ${day.title}` : ""}`;
+        const parts: string[] = [`<h3>${escapeHtml(heading)}</h3>`];
+        if (data?.title) parts.push(`<p><em>${escapeHtml(data.title)}</em></p>`);
+        if (day.scripture) {
+            parts.push(`<p>📖 <strong>${isPodcast ? "Builds on" : "Scripture"}:</strong> ${escapeHtml(day.scripture)}</p>`);
+        }
+        if (day.reflection) {
+            parts.push(
+                day.reflection
+                    .split(/\n{2,}/)
+                    .map((p) => `<p>${escapeHtml(p).replace(/\n/g, "<br/>")}</p>`)
+                    .join("")
+            );
+        }
+        if (day.prayerFocus) {
+            parts.push(`<p>🙏 <strong>${isPodcast ? "Reflection prompt" : "Prayer focus"}:</strong> ${escapeHtml(day.prayerFocus)}</p>`);
+        }
+        parts.push(`<p>— Based on "${escapeHtml(sermon?.title ?? "")}"</p>`);
+        return parts.join("\n");
+    };
+
+    const handleCopyDay = async (day: DevotionalDay, index: number) => {
+        const ok = await copyFormatted(dayAsHtml(day, index), dayAsPlainText(day, index));
+        if (ok) {
+            toast.success(`${day.dayName || `Day ${day.day ?? index + 1}`} copied`, {
+                description: "Paste into WhatsApp, Notes, or anywhere else — formatting comes along.",
+            });
+        } else {
+            toast.error("Couldn't copy — your browser blocked clipboard access");
+        }
+    };
+
+    const handleCopyAll = async () => {
+        if (!data?.days) return;
+        const plain = [
+            `*${data.title || seriesName}*`,
+            data.subtitle ? `_${data.subtitle}_` : "",
+            "",
+            ...data.days.map((day, i) => dayAsPlainText(day, i)),
+        ]
+            .join("\n\n")
+            .replace(/\n{3,}/g, "\n\n")
+            .trim();
+        const html = [
+            `<h2>${escapeHtml(data.title || seriesName)}</h2>`,
+            data.subtitle ? `<p><em>${escapeHtml(data.subtitle)}</em></p>` : "",
+            ...data.days.map((day, i) => dayAsHtml(day, i)),
+        ].join("\n<hr/>\n");
+        const ok = await copyFormatted(html, plain);
+        if (ok) {
+            toast.success(`${seriesName} copied`, {
+                description: "All days copied with formatting — ready to paste anywhere.",
+            });
+        } else {
+            toast.error("Couldn't copy — your browser blocked clipboard access");
+        }
+    };
+
     return (
         <div className="min-h-[calc(100vh-48px)]">
             {/* Header */}
@@ -144,6 +228,10 @@ export default function DevotionalsPage({ params }: { params: Promise<{ id: stri
                     </div>
                 </div>
                 <div className="flex flex-wrap gap-2">
+                    <Button variant="outline" size="sm" onClick={handleCopyAll} disabled={!data}>
+                        <Copy className="h-4 w-4 mr-2" />
+                        Copy All
+                    </Button>
                     <Button variant="outline" size="sm" onClick={handleExportPdf} disabled={!data}>
                         <Download className="h-4 w-4 mr-2" />
                         Export PDF
@@ -238,13 +326,25 @@ export default function DevotionalsPage({ params }: { params: Promise<{ id: stri
                                             )}
                                         </div>
                                         <div className="flex-1 pb-4">
-                                            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 mb-2">
-                                                <span className="text-sm font-medium text-[var(--color-primary)]">
-                                                    {day.dayName}
-                                                </span>
-                                                <h3 className="font-display text-lg font-semibold text-[var(--color-text-light)]">
-                                                    {day.title}
-                                                </h3>
+                                            <div className="flex items-start justify-between gap-2 mb-2">
+                                                <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3">
+                                                    <span className="text-sm font-medium text-[var(--color-primary)]">
+                                                        {day.dayName}
+                                                    </span>
+                                                    <h3 className="font-display text-lg font-semibold text-[var(--color-text-light)]">
+                                                        {day.title}
+                                                    </h3>
+                                                </div>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className="shrink-0 text-[var(--color-text-muted)] opacity-60 transition-opacity hover:opacity-100 group-hover:opacity-100"
+                                                    onClick={() => handleCopyDay(day, index)}
+                                                    aria-label={`Copy ${day.dayName || `Day ${day.day ?? index + 1}`}`}
+                                                >
+                                                    <Copy className="h-4 w-4 sm:mr-1.5" />
+                                                    <span className="hidden sm:inline">Copy</span>
+                                                </Button>
                                             </div>
                                             <p className="text-sm text-[var(--color-text-muted)] mb-3">
                                                 {isPodcast ? "Builds on" : "Scripture"}: {day.scripture}

@@ -3,14 +3,13 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
-import { Library, Settings, Palette } from "lucide-react";
+import { Library, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { LogoMark } from "@/components/brand/RevelationsLogo";
 
 const navItems = [
     { href: "/library", icon: Library, label: "Library" },
     { href: "/settings", icon: Settings, label: "Settings" },
-    { href: "/settings/brand-kit", icon: Palette, label: "Brand Kit" },
 ];
 
 export function GlobalSidebar() {

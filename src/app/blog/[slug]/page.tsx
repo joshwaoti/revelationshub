@@ -5,6 +5,7 @@ import { useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { Loader2, Calendar, Clock, User } from "lucide-react";
 import Link from "next/link";
+import { MarkdownText } from "@/components/MarkdownText";
 
 interface BlogData {
     title: string;
@@ -150,9 +151,12 @@ export default function PublicBlogPage({ params }: { params: Promise<{ slug: str
 
                     {/* Introduction */}
                     {data.introduction && (
-                        <p className="text-lg text-[#ffeaec]/90 leading-relaxed mb-10">
-                            {data.introduction}
-                        </p>
+                        <div className="mb-10">
+                            <MarkdownText
+                                text={data.introduction}
+                                className="text-lg text-[#ffeaec]/90 leading-relaxed mb-4 last:mb-0"
+                            />
+                        </div>
                     )}
 
                     {/* Sections */}
@@ -161,8 +165,11 @@ export default function PublicBlogPage({ params }: { params: Promise<{ slug: str
                             <h2 className="font-display text-2xl font-semibold text-[#6db1bf] mb-4">
                                 {section.heading}
                             </h2>
-                            <div className="text-[#ffeaec]/85 leading-relaxed whitespace-pre-wrap mb-6">
-                                {section.content}
+                            <div className="mb-6">
+                                <MarkdownText
+                                    text={section.content}
+                                    className="text-[#ffeaec]/85 leading-relaxed mb-4 last:mb-0"
+                                />
                             </div>
                             {section.keyScripture && (
                                 <blockquote className="border-l-4 border-[#d8315b] pl-6 py-3 my-6 bg-[#d8315b]/10 rounded-r-lg">
@@ -211,18 +218,20 @@ export default function PublicBlogPage({ params }: { params: Promise<{ slug: str
                             <h3 className="font-display text-xl font-semibold text-[#ffeaec] mb-3">
                                 🎯 This Week&apos;s Challenge
                             </h3>
-                            <p className="text-[#ffeaec]/90 leading-relaxed">
-                                {data.weeklyChallenge}
-                            </p>
+                            <MarkdownText
+                                text={data.weeklyChallenge}
+                                className="text-[#ffeaec]/90 leading-relaxed mb-3 last:mb-0"
+                            />
                         </div>
                     )}
 
                     {/* Conclusion */}
                     {data.conclusion && (
                         <section className="mt-12 pt-8 border-t border-[#6db1bf]/20">
-                            <p className="text-lg text-[#ffeaec]/90 leading-relaxed">
-                                {data.conclusion}
-                            </p>
+                            <MarkdownText
+                                text={data.conclusion}
+                                className="text-lg text-[#ffeaec]/90 leading-relaxed mb-4 last:mb-0"
+                            />
                         </section>
                     )}
                 </article>

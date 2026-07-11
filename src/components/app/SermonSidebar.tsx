@@ -15,8 +15,6 @@ import {
     Mic,
     List,
     ArrowLeft,
-    Film,
-    Layers,
     Menu,
     X,
     MessageSquare,
@@ -70,14 +68,6 @@ function buildSidebarSections(isPodcast: boolean) {
                 { href: "blog", icon: FileEdit, label: "Blog Post" },
                 { href: "podcast", icon: Mic, label: isPodcast ? "Audio Version" : "Podcast Audio" },
                 { href: "summaries", icon: List, label: "Summaries" },
-            ],
-        },
-        {
-            title: "Editor",
-            iconColor: "var(--color-primary)",
-            items: [
-                { href: "editor", icon: Film, label: "Video Editor" },
-                { href: "templates", icon: Layers, label: "Templates" },
             ],
         },
     ];

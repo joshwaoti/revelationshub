@@ -1,19 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" role="img" aria-label="RevelationsHub">
-  <defs>
-    <linearGradient id="mark" x1="7" y1="42" x2="41" y2="6" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#6DB1BF"/>
-      <stop offset="0.62" stop-color="#F39A9D"/>
-      <stop offset="1" stop-color="#ffeaec"/>
-    </linearGradient>
-    <linearGradient id="beam" x1="15" y1="12" x2="34" y2="37" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#ffeaec" stop-opacity="0.95"/>
-      <stop offset="1" stop-color="#6DB1BF" stop-opacity="0.2"/>
-    </linearGradient>
-  </defs>
-  <rect x="3" y="3" width="42" height="42" rx="13" fill="#1A1029"/>
-  <path d="M12 36V20.8C12 13.2 17.5 8 24 8s12 5.2 12 12.8V36H12Z" fill="url(#mark)"/>
-  <path d="M16 34V21.5C16 16.1 19.6 12.4 24 12.4s8 3.7 8 9.1V34H16Z" fill="#1A1029" opacity="0.88"/>
-  <path d="M20 15.5 34 34H20V15.5Z" fill="url(#beam)" opacity="0.9"/>
-  <path d="M22.3 19.2v11.2l8.4-5.6-8.4-5.6Z" fill="#ffeaec"/>
-  <path d="M12 36h24" stroke="#ffeaec" stroke-opacity="0.75" stroke-width="2.4" stroke-linecap="round"/>
+  <rect x="3" y="3" width="42" height="42" rx="12" fill="#301A4B" stroke="#FFEAEC" stroke-opacity="0.14" stroke-width="1"/>
+  <path d="M12.5 15 L27.5 24 L12.5 33 Z" fill="#FFEAEC" stroke="#FFEAEC" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M31.23 18.68 A6.5 6.5 0 0 1 31.23 29.32" fill="none" stroke="#6DB1BF" stroke-width="2.75" stroke-linecap="round"/>
+  <path d="M33.24 15.81 A10 10 0 0 1 33.24 32.19" fill="none" stroke="#F39A9D" stroke-width="2.75" stroke-linecap="round"/>
+  <path d="M35.24 12.94 A13.5 13.5 0 0 1 35.24 35.06" fill="none" stroke="#6DB1BF" stroke-opacity="0.45" stroke-width="2.75" stroke-linecap="round"/>
 </svg>

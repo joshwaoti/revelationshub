@@ -438,7 +438,7 @@ export default function SermonDashboardPage({ params }: { params: Promise<{ id: 
                                                     </div>
                                                 </div>
                                                 <p className="text-xs text-[var(--color-text-light)] line-clamp-2 group-hover:text-[var(--color-primary)] transition-colors">
-                                                    {clip.title || `Clip ${index + 1}`}
+                                                    {clip.title || `Highlight ${index + 1}`}
                                                 </p>
                                             </Link>
                                         </motion.div>
