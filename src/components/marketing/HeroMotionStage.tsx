@@ -1,10 +1,9 @@
 "use client";
 
 import { useRef } from "react";
+import Image from "next/image";
 import { motion, useReducedMotion } from "framer-motion";
 import {
-    Library,
-    Settings,
     ArrowLeft,
     LayoutGrid,
     Wand2,
@@ -13,32 +12,37 @@ import {
     BookOpen,
     Heart,
     FileText,
+    Type,
+    FileEdit,
+    Mic,
+    List,
     Play,
-    Download,
-    Share2,
-    Flame,
-    Loader2,
+    Sparkles,
+    Calendar,
+    Quote,
+    ScrollText,
 } from "lucide-react";
-import { LogoMark } from "@/components/brand/RevelationsLogo";
-import { cn } from "@/lib/utils";
 
-// The app's real dark-theme tokens, hardcoded so the mockup always shows
+// The app's real light-theme tokens, hardcoded so the mockup always shows
 // the product's actual colors regardless of the marketing page theme.
 const ui = {
-    base: "#301a4b",
-    surface: "#231238",
+    sidebar: "#ffeaec",
+    main: "#fdf8f9",
+    card: "#ffffff",
+    ink: "#301a4b",
+    muted: "#548a94",
     primary: "#6db1bf",
     secondary: "#f39a9d",
-    textLight: "#ffeaec",
-    textMuted: "#8fa6c9",
-    border: "rgba(109, 177, 191, 0.2)",
+    border: "rgba(48, 26, 75, 0.08)",
+    ready: "#3d9a67",
+    readyBg: "rgba(61, 154, 103, 0.14)",
 };
 
 const sidebarSections = [
     {
         title: "SOCIAL MEDIA",
         items: [
-            { icon: Wand2, label: "Magic Clips", active: true },
+            { icon: Wand2, label: "Magic Clips" },
             { icon: MessageSquare, label: "Ask the Transcript" },
             { icon: ImageIcon, label: "Image Quotes" },
             { icon: LayoutGrid, label: "Social Carousel" },
@@ -52,34 +56,30 @@ const sidebarSections = [
             { icon: FileText, label: "Sermon Outline" },
         ],
     },
-];
-
-const clips = [
     {
-        title: "Hope speaks louder than fear",
-        duration: "0:42",
-        startsAt: "12:04",
-        score: 94,
-        category: "Encouragement",
-        selected: true,
-    },
-    {
-        title: "The night faith found its voice",
-        duration: "0:38",
-        startsAt: "27:31",
-        score: 88,
-        category: "Story",
-    },
-    {
-        title: "What healing actually requires",
-        duration: "0:51",
-        startsAt: "41:17",
-        score: 82,
-        category: "Teaching",
+        title: "MORE CONTENT",
+        items: [
+            { icon: Type, label: "Transcription" },
+            { icon: FileEdit, label: "Blog Post" },
+            { icon: Mic, label: "Podcast Audio" },
+            { icon: List, label: "Summaries" },
+        ],
     },
 ];
 
-const captionWords = ["Hope", "speaks", "louder", "than", "fear"];
+const contentStatus = [
+    { icon: LayoutGrid, label: "Carousel" },
+    { icon: BookOpen, label: "Discussion Guide" },
+    { icon: Heart, label: "Devotional" },
+    { icon: FileEdit, label: "Blog Post" },
+    { icon: ScrollText, label: "Outline" },
+];
+
+const contentStats = [
+    { icon: Wand2, label: "Clips Generated", value: "12" },
+    { icon: Quote, label: "Quotes", value: "7" },
+    { icon: FileText, label: "Has Transcript", value: "Yes" },
+];
 
 export function HeroMotionStage() {
     const stageRef = useRef<HTMLDivElement | null>(null);
@@ -116,53 +116,37 @@ export function HeroMotionStage() {
             <div className="pointer-events-none absolute inset-0 hero-sheen" />
 
             {/* Browser chrome */}
-            <div className="hero-desktop-frame group relative min-w-0 rounded-[1.6rem] border border-white/15 p-2 shadow-2xl" style={{ backgroundColor: ui.base }}>
+            <div className="hero-desktop-frame group relative min-w-0 rounded-[1.6rem] border p-2 shadow-2xl" style={{ backgroundColor: ui.card, borderColor: "rgba(48, 26, 75, 0.12)" }}>
                 <div className="flex items-center gap-2 border-b px-3 py-2" style={{ borderColor: ui.border }}>
                     <span className="size-2.5 rounded-full bg-[#ff5f57]" />
                     <span className="size-2.5 rounded-full bg-[#febc2e]" />
                     <span className="size-2.5 rounded-full bg-[#28c840]" />
-                    <div className="ml-3 flex-1 rounded-md bg-white/[0.06] px-3 py-1 text-left text-[10px]" style={{ color: `${ui.textLight}99` }}>
-                        app.revelationshub.com/sermon/hope-has-a-voice/clips
+                    <div className="ml-3 flex-1 rounded-md px-3 py-1 text-left text-[10px]" style={{ backgroundColor: ui.main, color: ui.muted }}>
+                        app.revelationshub.com/sermon/hope-has-a-voice
                     </div>
                 </div>
 
-                {/* The app itself: global rail · sermon sidebar · Magic Clips */}
-                <div className="relative flex aspect-[16/10] overflow-hidden rounded-[1rem] text-left" style={{ backgroundColor: ui.surface }}>
-                    {/* Global icon rail */}
-                    <div className="flex w-9 shrink-0 flex-col items-center gap-3 border-r py-2.5 sm:w-11" style={{ backgroundColor: ui.base, borderColor: ui.border }}>
-                        <LogoMark className="h-5 w-5 sm:h-6 sm:w-6" />
-                        <span className="mt-1.5 flex size-5 items-center justify-center rounded-md sm:size-6" style={{ backgroundColor: ui.primary }}>
-                            <Library className="size-3" style={{ color: ui.base }} />
-                        </span>
-                        <span className="flex size-5 items-center justify-center rounded-md sm:size-6" style={{ color: ui.textMuted }}>
-                            <Settings className="size-3" />
-                        </span>
-                    </div>
-
+                {/* The app itself: sermon sidebar · Overview screen */}
+                <div className="relative flex aspect-[16/10] overflow-hidden rounded-[1rem] text-left" style={{ backgroundColor: ui.main }}>
                     {/* Sermon sidebar */}
-                    <div className="hidden w-32 shrink-0 flex-col gap-1 border-r px-2 py-2.5 sm:flex md:w-36" style={{ backgroundColor: ui.base, borderColor: ui.border }}>
-                        <span className="flex items-center gap-1 text-[8px]" style={{ color: ui.textMuted }}>
+                    <div className="hidden w-[8.5rem] shrink-0 flex-col gap-1 px-2 py-2.5 sm:flex md:w-40" style={{ backgroundColor: ui.sidebar }}>
+                        <span className="flex items-center gap-1 px-1.5 text-[8px] font-medium" style={{ color: ui.ink }}>
                             <ArrowLeft className="size-2" /> Back to Library
                         </span>
-                        <span className="mt-1 flex items-center gap-1.5 rounded px-1.5 py-1 text-[9px]" style={{ color: ui.textLight }}>
+                        <span
+                            className="mt-1.5 flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-[9.5px] font-semibold shadow-sm"
+                            style={{ backgroundColor: ui.card, color: ui.ink, boxShadow: `inset 2.5px 0 0 ${ui.primary}, 0 1px 3px rgba(48,26,75,0.08)` }}
+                        >
                             <LayoutGrid className="size-2.5" style={{ color: ui.primary }} /> Overview
                         </span>
                         {sidebarSections.map((section) => (
-                            <div key={section.title} className="mt-1">
-                                <p className="px-1.5 pb-0.5 text-[7px] font-semibold tracking-wider" style={{ color: ui.textMuted }}>
+                            <div key={section.title} className="mt-1.5">
+                                <p className="px-2 pb-1 text-[7px] font-bold tracking-[0.12em]" style={{ color: ui.muted }}>
                                     {section.title}
                                 </p>
-                                {section.items.map((item) => (
-                                    <span
-                                        key={item.label}
-                                        className="flex items-center gap-1.5 rounded px-1.5 py-[3px] text-[9px]"
-                                        style={
-                                            item.active
-                                                ? { backgroundColor: ui.surface, color: ui.textLight, boxShadow: `inset 2px 0 0 ${ui.primary}` }
-                                                : { color: ui.textMuted }
-                                        }
-                                    >
-                                        <item.icon className="size-2.5" style={{ color: item.active ? ui.primary : ui.secondary }} />
+                                {section.items.map((item, i) => (
+                                    <span key={item.label} className="flex items-center gap-1.5 rounded px-2 py-[3.5px] text-[9px]" style={{ color: ui.ink }}>
+                                        <item.icon className="size-2.5" style={{ color: i % 2 === 0 ? ui.secondary : ui.primary }} />
                                         {item.label}
                                     </span>
                                 ))}
@@ -170,108 +154,114 @@ export function HeroMotionStage() {
                         ))}
                     </div>
 
-                    {/* Magic Clips content */}
-                    <div className="flex min-w-0 flex-1 flex-col p-2.5 sm:p-3.5">
-                        <div className="mb-2 flex items-center justify-between">
-                            <p className="truncate text-[11px] font-semibold sm:text-xs" style={{ color: ui.textLight }}>
-                                Clips · Hope Has a Voice
-                            </p>
-                            <span className="rounded-full px-2 py-0.5 text-[8px] font-semibold" style={{ backgroundColor: `${ui.primary}1f`, color: ui.primary }}>
-                                3 ready
-                            </span>
+                    {/* Overview content */}
+                    <div className="flex min-w-0 flex-1 flex-col p-3 sm:p-4">
+                        {/* Header */}
+                        <div className="mb-2.5 flex items-start justify-between gap-2">
+                            <div>
+                                <div className="flex items-center gap-1.5">
+                                    <p className="font-display text-[13px] font-bold leading-tight sm:text-[15px]" style={{ color: ui.ink }}>
+                                        Hope Has a Voice — Sunday Service
+                                    </p>
+                                    <span className="rounded-full px-1.5 py-px text-[7.5px] font-bold text-white" style={{ backgroundColor: ui.ready }}>
+                                        Ready
+                                    </span>
+                                </div>
+                                <p className="mt-0.5 flex items-center gap-1 text-[8px]" style={{ color: ui.muted }}>
+                                    <Calendar className="size-2" /> Jan 10, 2026 · 48:12
+                                </p>
+                            </div>
+                            <motion.span
+                                className="flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 text-[8.5px] font-semibold text-white"
+                                style={{ backgroundColor: ui.secondary }}
+                                animate={reducedMotion ? undefined : { scale: [1, 1.04, 1] }}
+                                transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
+                            >
+                                <Sparkles className="size-2.5" /> Generate All Content
+                            </motion.span>
                         </div>
 
                         <div className="flex min-h-0 flex-1 gap-2.5 sm:gap-3">
-                            {/* Clip list */}
-                            <div className="flex w-[46%] flex-col gap-1.5 sm:w-[44%]">
-                                {clips.map((clip) => (
-                                    <div
-                                        key={clip.title}
-                                        className="rounded-lg border p-1.5 sm:p-2"
-                                        style={
-                                            clip.selected
-                                                ? { borderColor: ui.primary, backgroundColor: `${ui.primary}14` }
-                                                : { borderColor: ui.border, backgroundColor: `${ui.base}66` }
-                                        }
-                                    >
-                                        <div className="flex items-start justify-between gap-1">
-                                            <p className="text-[9px] font-medium leading-tight sm:text-[10px]" style={{ color: ui.textLight }}>
-                                                {clip.title}
-                                            </p>
-                                            <span className="flex shrink-0 items-center gap-0.5 rounded-full border px-1 text-[7px] font-bold" style={{ borderColor: "rgba(251, 146, 60, 0.3)", color: "#fb923c", backgroundColor: "rgba(249, 115, 22, 0.1)" }}>
-                                                <Flame className="size-2" />
-                                                {clip.score}
-                                            </span>
-                                        </div>
-                                        <p className="mt-0.5 text-[7.5px] sm:text-[8px]" style={{ color: ui.textMuted }}>
-                                            {clip.duration} long · starts at {clip.startsAt}
-                                            <span className="ml-1 rounded-full px-1 py-px text-[7px]" style={{ backgroundColor: `${ui.primary}1a`, color: ui.primary }}>
-                                                {clip.category}
-                                            </span>
-                                        </p>
-                                    </div>
-                                ))}
-
-                                {/* Rendering clip with shimmer */}
-                                <div className="relative overflow-hidden rounded-lg border p-1.5 sm:p-2" style={{ borderColor: ui.border, backgroundColor: `${ui.base}66` }}>
-                                    {!reducedMotion && (
-                                        <motion.div
-                                            className="pointer-events-none absolute inset-0"
-                                            style={{ background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent)" }}
-                                            animate={{ x: ["-100%", "100%"] }}
-                                            transition={{ duration: 1.8, repeat: Infinity, ease: "linear" }}
-                                        />
-                                    )}
-                                    <p className="flex items-center gap-1 text-[9px] sm:text-[10px]" style={{ color: ui.textLight }}>
-                                        <Loader2 className={cn("size-2.5", !reducedMotion && "animate-spin")} style={{ color: ui.primary }} />
-                                        Rendering clip…
-                                    </p>
-                                    <p className="mt-0.5 text-[7.5px] sm:text-[8px]" style={{ color: ui.primary }}>
-                                        Adding captions…
-                                    </p>
-                                </div>
-                            </div>
-
-                            {/* Vertical video preview */}
-                            <div className="flex min-w-0 flex-1 flex-col items-center justify-center gap-1.5">
-                                <div className="relative h-full max-h-full overflow-hidden rounded-lg" style={{ aspectRatio: "9/16", backgroundColor: ui.base }}>
-                                    <div className="absolute inset-0" style={{ background: `linear-gradient(160deg, ${ui.primary}4d, ${ui.secondary}4d)` }} />
+                            {/* Video + clips */}
+                            <div className="flex min-w-0 flex-1 flex-col gap-2.5">
+                                <div className="relative overflow-hidden rounded-xl border shadow-sm" style={{ borderColor: ui.border, aspectRatio: "16/9" }}>
+                                    <Image
+                                        src="/marketing-thumbnails/stage.svg"
+                                        alt="Sermon video preview"
+                                        fill
+                                        className="object-cover"
+                                        unoptimized
+                                    />
                                     <div className="absolute inset-0 flex items-center justify-center">
-                                        <span className="flex size-6 items-center justify-center rounded-full sm:size-8" style={{ backgroundColor: ui.primary }}>
-                                            <Play className="ml-0.5 size-2.5 sm:size-3.5" style={{ color: ui.base, fill: ui.base }} />
-                                        </span>
+                                        <motion.span
+                                            className="flex size-8 items-center justify-center rounded-full sm:size-10"
+                                            style={{ backgroundColor: "rgba(255, 234, 236, 0.9)" }}
+                                            animate={reducedMotion ? undefined : { scale: [1, 1.08, 1] }}
+                                            transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                                        >
+                                            <Play className="ml-0.5 size-3.5 sm:size-4" style={{ color: ui.ink, fill: ui.ink }} />
+                                        </motion.span>
                                     </div>
-                                    {/* Karaoke captions */}
-                                    <div className="absolute inset-x-1 bottom-2 flex flex-wrap items-center justify-center gap-x-1 text-center">
-                                        {captionWords.map((word, i) => (
-                                            <motion.span
-                                                key={word}
-                                                className="text-[8px] font-extrabold uppercase sm:text-[10px]"
-                                                style={{ color: ui.textLight, textShadow: "0 1px 2px rgba(0,0,0,0.6)" }}
-                                                animate={
-                                                    reducedMotion
-                                                        ? undefined
-                                                        : { color: [ui.textLight, ui.primary, ui.textLight] }
-                                                }
-                                                transition={{
-                                                    duration: 0.5,
-                                                    repeat: Infinity,
-                                                    repeatDelay: captionWords.length * 0.5 - 0.5,
-                                                    delay: i * 0.5,
-                                                }}
-                                            >
-                                                {word}
-                                            </motion.span>
+                                </div>
+
+                                {/* Clips strip */}
+                                <div className="flex-1 rounded-xl border p-2 shadow-sm sm:p-2.5" style={{ backgroundColor: ui.card, borderColor: ui.border }}>
+                                    <div className="mb-1.5 flex items-center justify-between">
+                                        <p className="flex items-center gap-1 text-[9px] font-bold" style={{ color: ui.ink }}>
+                                            <Wand2 className="size-2.5" style={{ color: ui.secondary }} /> Clips (3)
+                                        </p>
+                                        <span className="text-[8px] font-medium" style={{ color: ui.primary }}>View all</span>
+                                    </div>
+                                    <div className="grid grid-cols-3 gap-1.5">
+                                        {["Hope speaks louder", "Faith finds its voice", "What healing requires"].map((title, i) => (
+                                            <div key={title} className="overflow-hidden rounded-lg border" style={{ borderColor: ui.border }}>
+                                                <div className="relative h-7 sm:h-9" style={{ background: `linear-gradient(15${i * 3}deg, ${ui.primary}55, ${ui.secondary}55)` }}>
+                                                    <Play className="absolute left-1/2 top-1/2 size-2.5 -translate-x-1/2 -translate-y-1/2" style={{ color: ui.ink, fill: ui.ink, opacity: 0.7 }} />
+                                                </div>
+                                                <p className="truncate px-1 py-0.5 text-[7px] font-medium" style={{ color: ui.ink }}>{title}</p>
+                                            </div>
                                         ))}
                                     </div>
                                 </div>
-                                <div className="flex items-center gap-1.5">
-                                    <span className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[8px] font-semibold" style={{ backgroundColor: ui.primary, color: ui.base }}>
-                                        <Download className="size-2" /> Download
-                                    </span>
-                                    <span className="flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[8px] font-semibold" style={{ borderColor: ui.border, color: ui.textLight }}>
-                                        <Share2 className="size-2" /> Share
-                                    </span>
+                            </div>
+
+                            {/* Right column: stats + status */}
+                            <div className="hidden w-[9.5rem] shrink-0 flex-col gap-2.5 sm:flex md:w-44">
+                                <div className="rounded-xl border p-2.5 shadow-sm" style={{ backgroundColor: ui.card, borderColor: ui.border }}>
+                                    <p className="mb-1.5 flex items-center gap-1 text-[9px] font-bold" style={{ color: ui.ink }}>
+                                        <Sparkles className="size-2.5" style={{ color: ui.secondary }} /> Content Stats
+                                    </p>
+                                    {contentStats.map((stat) => (
+                                        <div key={stat.label} className="flex items-center justify-between py-[3px]">
+                                            <span className="flex items-center gap-1 text-[8.5px]" style={{ color: ui.muted }}>
+                                                <stat.icon className="size-2.5" style={{ color: ui.primary }} />
+                                                {stat.label}
+                                            </span>
+                                            <span className="text-[8.5px] font-bold" style={{ color: ui.ink }}>{stat.value}</span>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                <div className="flex-1 rounded-xl border p-2.5 shadow-sm" style={{ backgroundColor: ui.card, borderColor: ui.border }}>
+                                    <p className="mb-1.5 text-[9px] font-bold" style={{ color: ui.ink }}>Content Status</p>
+                                    {contentStatus.map((item, i) => (
+                                        <div key={item.label} className="flex items-center justify-between py-[3px]">
+                                            <span className="flex items-center gap-1 text-[8.5px]" style={{ color: ui.muted }}>
+                                                <item.icon className="size-2.5" style={{ color: ui.primary }} />
+                                                {item.label}
+                                            </span>
+                                            <motion.span
+                                                className="rounded-full px-1.5 py-px text-[7px] font-bold"
+                                                style={{ backgroundColor: ui.readyBg, color: ui.ready }}
+                                                initial={reducedMotion ? undefined : { opacity: 0, scale: 0.7 }}
+                                                whileInView={reducedMotion ? undefined : { opacity: 1, scale: 1 }}
+                                                viewport={{ once: true }}
+                                                transition={{ delay: 0.5 + i * 0.15, duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+                                            >
+                                                Ready
+                                            </motion.span>
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
                         </div>

@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { useGenerateContent } from "@/hooks/use-generate-content";
-import { MarkdownText } from "@/components/MarkdownText";
+import { MarkdownText, renderInlineMarkdown } from "@/components/MarkdownText";
 import Link from "next/link";
 import {
     ChevronLeft,
@@ -458,9 +458,9 @@ export default function BlogPostPage({ params }: { params: Promise<{ id: string 
                             )}
 
                             {displayData.actionSteps && (
-                                <ol className="list-decimal list-inside space-y-3 text-[var(--color-text-light)] mb-6">
+                                <ol className="list-decimal list-outside pl-5 space-y-3 text-[var(--color-text-light)] mb-6">
                                     {displayData.actionSteps.map((step, i) => (
-                                        <li key={i} className="leading-relaxed">{step}</li>
+                                        <li key={i} className="leading-relaxed">{renderInlineMarkdown(step, `step-${i}`)}</li>
                                     ))}
                                 </ol>
                             )}

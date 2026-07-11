@@ -15,7 +15,12 @@ export const metadata: Metadata = {
   description: "Transform sermons into accurate clips, modern captions, discussion guides, devotionals, quote graphics, carousels, blogs, and podcast assets. Built for churches.",
   keywords: ["sermon clips", "church video editor", "ministry content", "sermon repurposing", "church social media", "caption generator", "sermon AI", "church content creation"],
   icons: {
-    icon: "/revelationshub-mark.svg",
+    icon: [
+      { url: "/favicon.ico", sizes: "16x16 32x32 48x48" },
+      { url: "/revelationshub-mark.svg", type: "image/svg+xml" },
+    ],
+    shortcut: "/favicon.ico",
+    apple: "/revelationshub-mark.svg",
   },
   openGraph: {
     type: "website",

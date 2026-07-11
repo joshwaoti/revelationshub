@@ -35,16 +35,6 @@ const buttonVariants = {
   },
 };
 
-const logoVariants = {
-  hidden: { opacity: 0, scale: 0.8, y: 10 },
-  visible: (i: number) => ({
-    opacity: 1,
-    scale: 1,
-    y: 0,
-    transition: { delay: 0.6 + i * 0.08, duration: 0.4, ease: "easeOut" as const },
-  }),
-};
-
 export function HeroAnimated() {
   return (
     <section className="relative overflow-hidden px-4 pb-16 pt-24 sm:px-6 sm:pb-24 sm:pt-28 lg:pb-32">
@@ -139,68 +129,16 @@ export function HeroAnimated() {
             </motion.div>
           </motion.div>
 
-          {/* Social Proof */}
-          <motion.div
-            className="mt-14 flex flex-col items-center border-t border-[var(--color-border)]/40 pt-8"
-            variants={itemVariants}
-          >
-            <p className="text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]/80 mb-5">
-              Empowering churches and podcasters of all sizes
-            </p>
-            <div className="flex items-center gap-3 sm:gap-4 flex-wrap justify-center max-w-2xl">
-              {[
-                { name: "Grace Family Church", icon: "✝️" },
-                { name: "New Life Community", icon: "🕊️" },
-                { name: "The Daily Walk Podcast", icon: "🎙️" },
-                { name: "Cornerstone Chapel", icon: "⛪" },
-                { name: "Elevation Group", icon: "🔥" },
-              ].map((church, i) => (
-                <motion.div
-                  key={church.name}
-                  className={`flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[var(--color-surface)] border border-[var(--color-border)]/60 shadow-sm ${
-                    i > 3 ? "hidden md:flex" : ""
-                  }`}
-                  custom={i}
-                  variants={logoVariants}
-                  whileHover={{ 
-                    scale: 1.03, 
-                    borderColor: "var(--color-primary)",
-                    backgroundColor: "rgba(var(--color-primary-rgb), 0.05)",
-                    transition: { duration: 0.2 } 
-                  }}
-                >
-                  <span className="text-sm">{church.icon}</span>
-                  <span className="text-xs font-semibold text-[var(--color-text-muted)]">
-                    {church.name}
-                  </span>
-                </motion.div>
-              ))}
-            </div>
-          </motion.div>
         </motion.div>
 
         {/* Product Visual Mockup */}
-        <motion.div 
-          className="relative mx-auto mt-12 max-w-6xl md:mt-16"
+        <motion.div
+          className="relative mx-auto mt-14 max-w-6xl md:mt-20"
           initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4, duration: 0.8, ease: [0.16, 1, 0.3, 1] as const }}
         >
           <HeroMotionStage />
-
-          {/* Mobile specific layout cards */}
-          <div className="mx-auto mt-8 grid max-w-4xl gap-4 sm:grid-cols-3 md:hidden">
-            {[
-              ["Source", "Upload or YouTube"],
-              ["Output", "Clips and content"],
-              ["Review", "Team-ready workspace"],
-            ].map(([label, value]) => (
-              <div key={label} className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)]/80 p-4 shadow-sm backdrop-blur-sm">
-                <p className="text-xs font-semibold uppercase text-[var(--color-secondary)]">{label}</p>
-                <p className="mt-2 font-semibold text-[var(--color-text-light)]">{value}</p>
-              </div>
-            ))}
-          </div>
         </motion.div>
       </div>
     </section>

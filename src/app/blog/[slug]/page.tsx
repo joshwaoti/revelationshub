@@ -5,7 +5,7 @@ import { useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { Loader2, Calendar, Clock, User } from "lucide-react";
 import Link from "next/link";
-import { MarkdownText } from "@/components/MarkdownText";
+import { MarkdownText, renderInlineMarkdown } from "@/components/MarkdownText";
 
 interface BlogData {
     title: string;
@@ -202,10 +202,10 @@ export default function PublicBlogPage({ params }: { params: Promise<{ slug: str
                             <h2 className="font-display text-2xl font-semibold text-[#6db1bf] mb-6">
                                 Action Steps
                             </h2>
-                            <ol className="list-decimal list-inside space-y-4 text-[#ffeaec]/85">
+                            <ol className="list-decimal list-outside pl-7 space-y-4 text-[#ffeaec]/85">
                                 {data.actionSteps.map((step, i) => (
-                                    <li key={i} className="leading-relaxed pl-2">
-                                        {step}
+                                    <li key={i} className="leading-relaxed pl-1">
+                                        {renderInlineMarkdown(step, `step-${i}`)}
                                     </li>
                                 ))}
                             </ol>
