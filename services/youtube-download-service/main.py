@@ -105,6 +105,88 @@ class ProxyPool:
 proxy_pool = ProxyPool(PROXIES)
 download_slots = asyncio.Semaphore(MAX_CONCURRENT_DOWNLOADS)
 
+JOB_RETENTION_SECONDS = int(os.environ.get("JOB_RETENTION_SECONDS", str(6 * 60 * 60)))
+_jobs: dict[str, dict[str, Any]] = {}
+_jobs_lock = threading.Lock()
+_job_tasks: set[asyncio.Task[None]] = set()
+
+
+def purge_expired_jobs() -> None:
+    cutoff = time.time() - JOB_RETENTION_SECONDS
+    with _jobs_lock:
+        stale = [
+            job_id
+            for job_id, job in _jobs.items()
+            if job["status"] in {"succeeded", "failed"} and job["updated_at"] < cutoff
+        ]
+        for job_id in stale:
+            _jobs.pop(job_id, None)
+
+
+def active_job_for_key(s3_key: str) -> dict[str, Any] | None:
+    with _jobs_lock:
+        for job in _jobs.values():
+            if job["s3_key"] == s3_key and job["status"] in {"queued", "running"}:
+                return dict(job)
+    return None
+
+
+def create_job(job_id: str, s3_key: str) -> dict[str, Any]:
+    now = time.time()
+    job = {
+        "job_id": job_id,
+        "status": "queued",
+        "s3_key": s3_key,
+        "created_at": now,
+        "updated_at": now,
+        "result": None,
+        "error": None,
+    }
+    with _jobs_lock:
+        _jobs[job_id] = job
+    return dict(job)
+
+
+def update_job(job_id: str, **changes: Any) -> None:
+    with _jobs_lock:
+        job = _jobs.get(job_id)
+        if job is None:
+            return
+        job.update(changes)
+        job["updated_at"] = time.time()
+
+
+def get_job(job_id: str) -> dict[str, Any] | None:
+    with _jobs_lock:
+        job = _jobs.get(job_id)
+        return dict(job) if job else None
+
+
+def job_view(job: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "job_id": job["job_id"],
+        "status": job["status"],
+        "s3_key": job["s3_key"],
+        "result": job["result"],
+        "error": job["error"],
+    }
+
+
+async def run_job(job_id: str, payload: DownloadToS3Request) -> None:
+    """Execute one queued import. Failures are recorded on the job, never raised."""
+    async with download_slots:
+        update_job(job_id, status="running")
+        try:
+            result = await asyncio.to_thread(run_download_to_s3, payload, job_id)
+            update_job(job_id, status="succeeded", result=result)
+            logger.info("job_succeeded job_id=%s key=%s", job_id, payload.s3_key)
+        except HTTPException as error:
+            update_job(job_id, status="failed", error=str(error.detail)[:1200])
+            logger.warning("job_failed job_id=%s detail=%s", job_id, error.detail)
+        except Exception as error:
+            update_job(job_id, status="failed", error=safe_error(error))
+            logger.error("job_failed job_id=%s error=%s", job_id, safe_error(error))
+
 
 def safe_error(error: Exception) -> str:
     message = SECRET_URL_RE.sub(r"\1***:***@", str(error))
@@ -431,7 +513,7 @@ def run_download_to_s3(payload: DownloadToS3Request, request_id: str) -> dict[st
 
 app = FastAPI(
     title="RevelationsHub YouTube Download Service",
-    version="2.0.0",
+    version="2.1.0",
     docs_url=None,
     redoc_url=None,
 )
@@ -470,13 +552,19 @@ def validate_runtime() -> None:
 @app.get("/")
 @app.get("/health")
 def health() -> dict[str, Any]:
+    with _jobs_lock:
+        active = sum(1 for job in _jobs.values() if job["status"] in {"queued", "running"})
+        tracked = len(_jobs)
     return {
         "status": "ok",
         "service": "revelationshub-youtube-downloader",
-        "version": "2.0.0",
+        "version": "2.1.0",
         "proxy_routes": len(PROXIES),
         "direct_fallback": ALLOW_DIRECT_FALLBACK,
         "pot_provider_configured": bool(POT_PROVIDER_URL),
+        "max_concurrent_downloads": MAX_CONCURRENT_DOWNLOADS,
+        "active_jobs": active,
+        "tracked_jobs": tracked,
     }
 
 
@@ -542,3 +630,35 @@ async def download_to_s3(payload: DownloadToS3Request, request: Request) -> dict
                 status_code=502,
                 detail={"message": "YouTube download or S3 upload failed", "request_id": request_id},
             ) from error
+
+
+@app.post("/api/youtube/jobs", status_code=202)
+async def enqueue_download_job(payload: DownloadToS3Request, request: Request) -> dict[str, Any]:
+    """Queue an import and return immediately so callers never hold a long request open."""
+    require_auth(request)
+    purge_expired_jobs()
+
+    existing = active_job_for_key(payload.s3_key)
+    if existing:
+        return job_view(existing)
+
+    job_id = request.headers.get("x-request-id") or uuid.uuid4().hex
+    if get_job(job_id):
+        job_id = uuid.uuid4().hex
+    job = create_job(job_id, payload.s3_key)
+
+    task = asyncio.create_task(run_job(job_id, payload))
+    _job_tasks.add(task)
+    task.add_done_callback(_job_tasks.discard)
+
+    logger.info("job_queued job_id=%s key=%s", job_id, payload.s3_key)
+    return job_view(job)
+
+
+@app.get("/api/youtube/jobs/{job_id}")
+async def read_download_job(job_id: str, request: Request) -> dict[str, Any]:
+    require_auth(request)
+    job = get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Unknown or expired job")
+    return job_view(job)

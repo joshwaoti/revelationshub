@@ -38,6 +38,84 @@ function formatViewCount(count: string): string {
     return count;
 }
 
+const YOUTUBE_SERVICE_URL =
+    process.env.YOUTUBE_SERVICE_URL ||
+    process.env.NEXT_PUBLIC_YOUTUBE_SERVICE_URL ||
+    "http://localhost:8001";
+const YOUTUBE_SERVICE_TOKEN = process.env.YOUTUBE_SERVICE_TOKEN;
+
+interface ServiceInfo {
+    success: boolean;
+    title?: string;
+    author?: string;
+    duration?: number;
+    duration_formatted?: string;
+    thumbnail?: string;
+    has_captions?: boolean;
+    available_captions?: string[];
+    views?: number;
+    publish_date?: string;
+}
+
+// Ask the downloader service for metadata. Returns null so the caller can fall
+// back to the Data API / oEmbed when the service is unreachable.
+async function fetchFromDownloadService(url: string, videoId: string) {
+    try {
+        const headers: Record<string, string> = {};
+        if (YOUTUBE_SERVICE_TOKEN) {
+            headers.Authorization = `Bearer ${YOUTUBE_SERVICE_TOKEN}`;
+        }
+
+        const response = await fetch(
+            `${YOUTUBE_SERVICE_URL}/api/youtube/info?url=${encodeURIComponent(url)}`,
+            { headers, signal: AbortSignal.timeout(60_000) }
+        );
+
+        if (!response.ok) return null;
+
+        const info = (await response.json()) as ServiceInfo;
+        if (!info.success || !info.duration) return null;
+
+        const publishedAt = info.publish_date
+            ? `${info.publish_date.slice(0, 4)}-${info.publish_date.slice(4, 6)}-${info.publish_date.slice(6, 8)}`
+            : "";
+
+        return {
+            videoId,
+            title: info.title || "",
+            description: "",
+            thumbnail: info.thumbnail || `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
+            thumbnails: { default: info.thumbnail },
+            duration: info.duration,
+            durationFormatted: info.duration_formatted || "",
+            channelId: "",
+            channelName: info.author || "",
+            channelThumbnail: "",
+            publishedAt,
+            publishedDate: publishedAt ? new Date(publishedAt).toLocaleDateString() : "",
+            tags: [],
+            categoryId: "",
+            defaultLanguage: "",
+            defaultAudioLanguage: "",
+            viewCount: String(info.views ?? 0),
+            viewCountFormatted: formatViewCount(String(info.views ?? 0)),
+            likeCount: "0",
+            commentCount: "0",
+            definition: "",
+            dimension: "",
+            caption: Boolean(info.has_captions),
+            licensedContent: false,
+            hasTranscript: Boolean(info.has_captions),
+            captionLanguages: info.available_captions || [],
+            liveBroadcastContent: "",
+            source: "downloader-service",
+        };
+    } catch (error) {
+        console.warn("Downloader metadata lookup failed, falling back:", error);
+        return null;
+    }
+}
+
 export async function POST(req: NextRequest) {
     try {
         const { userId } = await auth();
@@ -56,7 +134,15 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "Invalid YouTube URL" }, { status: 400 });
         }
 
-        // Use YouTube Data API (or oEmbed as fallback)
+        // Preferred source: our downloader service. It reads YouTube through the
+        // proxy pool, needs no Data API quota, and reports the true duration the
+        // trim controls depend on.
+        const serviceMetadata = await fetchFromDownloadService(url, videoId);
+        if (serviceMetadata) {
+            return NextResponse.json(serviceMetadata);
+        }
+
+        // Fallbacks: YouTube Data API (needs a key), then oEmbed (no duration)
         const apiKey = process.env.YOUTUBE_API_KEY;
 
         if (apiKey) {

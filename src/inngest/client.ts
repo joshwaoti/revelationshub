@@ -22,6 +22,24 @@ export type SermonProcessEvent = {
     };
 };
 
+// YouTube import: the downloader service pulls the video into S3 in the
+// background, then this job hands off to the normal sermon/process pipeline.
+export type SermonYouTubeImportEvent = {
+    name: "sermon/youtube-import";
+    data: {
+        sermonId: string;
+        youtubeUrl: string;
+        s3Key: string;
+        quality: string;
+        start?: number;
+        end?: number;
+        videoType: "sermon" | "podcast";
+        maxClips: number;
+        captionEffect?: "none" | "pop" | "fade" | "karaoke";
+        organizationId: string;
+    };
+};
+
 export type SermonGenerateTextEvent = {
     name: "sermon/generate-text";
     data: {
@@ -61,6 +79,7 @@ export type SermonRegenerateClipsEvent = {
 
 export type InngestEvents =
     | SermonProcessEvent
+    | SermonYouTubeImportEvent
     | SermonGenerateTextEvent
     | SermonGenerateImagesEvent
     | SermonRegenerateClipsEvent;

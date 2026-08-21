@@ -29,11 +29,29 @@ docker compose -f docker-compose.dokploy.yml up --build
 curl http://localhost:8001/health
 ```
 
-The protected download endpoint is:
+## Endpoints
+
+All endpoints except `/health` require `Authorization: Bearer <YOUTUBE_SERVICE_TOKEN>`.
+`/api/youtube/info` is additionally readable without a token when `PUBLIC_INFO_ENDPOINT=true`.
 
 ```text
-POST /api/youtube/download-to-s3
-Authorization: Bearer <YOUTUBE_SERVICE_TOKEN>
+GET  /health                      service, proxy count, active job count
+GET  /api/youtube/info?url=...    metadata (title, duration, qualities, captions)
+POST /api/youtube/jobs            queue an import, returns 202 + job_id
+GET  /api/youtube/jobs/{job_id}   job status: queued | running | succeeded | failed
+POST /api/youtube/download-to-s3  synchronous import (legacy; blocks until done)
 ```
 
-The request contract remains compatible with the application: `url`, `quality`, optional `start`/`end`, `s3_key`, and optional `s3_bucket`.
+`POST /api/youtube/jobs` is what the application uses. It returns immediately so no
+caller has to hold a connection open for the length of a download, and the
+Inngest `import-youtube` function polls the job until it finishes.
+
+Both import endpoints take the same body: `url`, `quality`, optional `start`/`end`,
+`s3_key`, and optional `s3_bucket`.
+
+Two layers of idempotency protect against duplicate work: queuing a job for an
+`s3_key` that already has one in flight returns the existing job, and an import
+whose S3 object already exists with a matching source hash returns without
+re-downloading. Finished jobs are retained in memory for `JOB_RETENTION_SECONDS`
+(default 6h); a container restart drops in-flight jobs, and the polling caller
+re-queues them.

@@ -226,7 +226,9 @@ export function UploadSermonModal({ open, onOpenChange, onSuccess }: UploadSermo
 
             let s3Key = "";
 
-            // Step 2a: For YouTube, download directly to S3 (server-side)
+            // Step 2a: For YouTube, hand the import to a background job. The
+            // downloader pulls the video into S3 through the proxy pool and then
+            // starts processing itself, so the user can close this modal.
             if (activeTab === "youtube" && metadata) {
                 const videoDuration = metadata.duration || 0;
                 const effectiveEndTime = ytEndTime || videoDuration;
@@ -235,22 +237,27 @@ export function UploadSermonModal({ open, onOpenChange, onSuccess }: UploadSermo
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
+                        sermonId: newSermonId,
                         url: youtubeUrl,
                         quality: "highest",
                         start: ytStartTime > 0 ? ytStartTime.toString() : undefined,
                         end: effectiveEndTime < videoDuration ? effectiveEndTime.toString() : undefined,
+                        videoType,
+                        clipCount,
+                        captionEffect,
                     }),
                 });
 
                 if (!downloadResponse.ok) {
                     const errorData = await downloadResponse.json();
-                    throw new Error(errorData.error || "Failed to download video");
+                    throw new Error(errorData.error || "Failed to start YouTube import");
                 }
 
-                const downloadResult = await downloadResponse.json();
-                s3Key = downloadResult.s3Key;
-
-                setUploadProgress(50);
+                // The background job patches the S3 key and triggers processing,
+                // so nothing further is needed on this path.
+                setUploadProgress(100);
+                setStep("complete");
+                return;
             }
 
             // Step 2b: For file upload, get presigned URL and upload
