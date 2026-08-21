@@ -73,6 +73,20 @@ def parse_list(value: str) -> list[str]:
     return [item.strip() for item in re.split(r"[\r\n,]+", value) if item.strip()]
 
 
+def prepare_writable_cookies(source: str) -> str:
+    """yt-dlp writes refreshed cookies back to cookiefile; the Dokploy mount is read-only."""
+    if not source:
+        return ""
+    src = Path(source)
+    if not src.is_file():
+        raise RuntimeError("YOUTUBE_COOKIES_FILE does not exist")
+    TMP_ROOT.mkdir(parents=True, exist_ok=True)
+    dest = TMP_ROOT / "youtube-cookies.txt"
+    shutil.copyfile(src, dest)
+    dest.chmod(0o600)
+    return str(dest)
+
+
 def validate_proxy(proxy: str) -> str:
     parsed = urlparse(proxy)
     if parsed.scheme not in {"http", "https", "socks5", "socks5h"} or not parsed.hostname:
@@ -531,21 +545,22 @@ if allowed_origins:
 
 @app.on_event("startup")
 def validate_runtime() -> None:
+    global COOKIES_FILE
     if not SERVICE_TOKEN and not ALLOW_INSECURE:
         raise RuntimeError("YOUTUBE_SERVICE_TOKEN is required")
     if not AWS_BUCKET:
         raise RuntimeError("AWS_S3_BUCKET is required")
     if shutil.which("ffmpeg") is None or shutil.which("node") is None:
         raise RuntimeError("ffmpeg and Node.js are required")
-    if COOKIES_FILE and not Path(COOKIES_FILE).is_file():
-        raise RuntimeError("YOUTUBE_COOKIES_FILE does not exist")
+    COOKIES_FILE = prepare_writable_cookies(COOKIES_FILE)
     TMP_ROOT.mkdir(parents=True, exist_ok=True)
     logger.info(
-        "service_ready proxies=%s direct_fallback=%s max_concurrency=%s pot_provider=%s",
+        "service_ready proxies=%s direct_fallback=%s max_concurrency=%s pot_provider=%s cookies=%s",
         len(PROXIES),
         ALLOW_DIRECT_FALLBACK,
         MAX_CONCURRENT_DOWNLOADS,
         POT_PROVIDER_URL,
+        bool(COOKIES_FILE),
     )
 
 
