@@ -39,7 +39,7 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
     volumes:
       - youtube-download-tmp:/tmp/youtube-downloads
-      - ./youtube-cookies.txt:/cookies/youtube-cookies.txt:ro
+      - ../../../files/youtube-cookies.txt:/cookies/youtube-cookies.txt:ro
     networks:
       - youtube-internal
     security_opt:
