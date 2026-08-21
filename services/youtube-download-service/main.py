@@ -59,12 +59,13 @@ ALLOW_DIRECT_FALLBACK = env_bool("ALLOW_DIRECT_YOUTUBE_FALLBACK", True)
 AWS_BUCKET = os.environ.get("AWS_S3_BUCKET", "").strip()
 AWS_REGION = os.environ.get("AWS_REGION", "us-east-1").strip()
 POT_PROVIDER_URL = os.environ.get("POT_PROVIDER_URL", "http://pot-provider:4416").rstrip("/")
-COOKIES_FILE = os.environ.get("YOUTUBE_COOKIES_FILE", "").strip()
+COOKIES_SOURCE = os.environ.get("YOUTUBE_COOKIES_FILE", "").strip()
+COOKIES_FILE = ""
 MAX_VIDEO_SECONDS = int(os.environ.get("MAX_DOWNLOAD_SECONDS", str(3 * 60 * 60)))
 MAX_VIDEO_BYTES = int(os.environ.get("MAX_DOWNLOAD_BYTES", str(8 * 1024 * 1024 * 1024)))
 MAX_VIDEO_HEIGHT = int(os.environ.get("MAX_VIDEO_HEIGHT", "1080"))
 MAX_CONCURRENT_DOWNLOADS = max(1, int(os.environ.get("MAX_CONCURRENT_DOWNLOADS", "2")))
-MAX_PROXY_ATTEMPTS = max(1, int(os.environ.get("MAX_PROXY_ATTEMPTS", "4")))
+MAX_PROXY_ATTEMPTS = max(1, int(os.environ.get("MAX_PROXY_ATTEMPTS", "8")))
 TMP_ROOT = Path(os.environ.get("DOWNLOAD_TMP_DIR", "/tmp/youtube-downloads"))
 ALLOWED_S3_PREFIX = os.environ.get("ALLOWED_S3_PREFIX", "sermons/").strip()
 
@@ -85,6 +86,13 @@ def prepare_writable_cookies(source: str) -> str:
     shutil.copyfile(src, dest)
     dest.chmod(0o600)
     return str(dest)
+
+
+def refresh_cookies() -> None:
+    """Re-copy cookies from the read-only mount before each download job."""
+    global COOKIES_FILE
+    if COOKIES_SOURCE:
+        COOKIES_FILE = prepare_writable_cookies(COOKIES_SOURCE)
 
 
 def validate_proxy(proxy: str) -> str:
@@ -110,8 +118,11 @@ class ProxyPool:
             start = self._cursor
             self._cursor = (self._cursor + 1) % len(self._proxies)
         ordered = self._proxies[start:] + self._proxies[:start]
-        candidates: list[str | None] = ordered[:MAX_PROXY_ATTEMPTS]
-        if ALLOW_DIRECT_FALLBACK and len(candidates) < MAX_PROXY_ATTEMPTS:
+        # Try the full residential pool — a 1GB+ download often needs several
+        # healthy exits before one stays up long enough to finish.
+        limit = max(MAX_PROXY_ATTEMPTS, len(ordered))
+        candidates: list[str | None] = ordered[:limit]
+        if ALLOW_DIRECT_FALLBACK:
             candidates.append(None)
         return candidates
 
@@ -266,22 +277,32 @@ def require_auth(request: Request, *, allow_public_info: bool = False) -> None:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
 
+def youtube_player_clients() -> list[str]:
+    # Prefer web_safari with cookies (tv + cookies can invalidate the session).
+    # Keep mweb as fallback with the PO-token provider.
+    if COOKIES_FILE:
+        return ["web_safari", "mweb"]
+    return ["mweb", "web_safari"]
+
+
 def ydl_options(*, proxy: str | None, output_template: str | None = None) -> dict[str, Any]:
     options: dict[str, Any] = {
         "quiet": True,
         "no_warnings": True,
+        "noprogress": True,
         "noplaylist": True,
         "cachedir": False,
-        "retries": 5,
-        "fragment_retries": 10,
+        "continuedl": True,
+        "retries": 10,
+        "fragment_retries": 20,
         "extractor_retries": 3,
         "file_access_retries": 3,
-        "socket_timeout": 30,
+        "socket_timeout": 60,
         "concurrent_fragment_downloads": 4,
         "max_filesize": MAX_VIDEO_BYTES,
         "js_runtimes": {"node": {}},
         "extractor_args": {
-            "youtube": {"player_client": ["mweb"]},
+            "youtube": {"player_client": youtube_player_clients()},
             "youtubepot-bgutilhttp": {"base_url": [POT_PROVIDER_URL]},
         },
     }
@@ -293,9 +314,12 @@ def ydl_options(*, proxy: str | None, output_template: str | None = None) -> dic
         options.update(
             {
                 "outtmpl": output_template,
+                # Prefer a single progressive MP4 when possible so a proxy drop
+                # does not strand a half-merged video+audio pair.
                 "format": (
+                    f"b[height<={MAX_VIDEO_HEIGHT}][ext=mp4]/"
                     f"bv*[height<={MAX_VIDEO_HEIGHT}][ext=mp4]+ba[ext=m4a]/"
-                    f"b[height<={MAX_VIDEO_HEIGHT}][ext=mp4]/best[height<={MAX_VIDEO_HEIGHT}]"
+                    f"best[height<={MAX_VIDEO_HEIGHT}]"
                 ),
                 "merge_output_format": "mp4",
                 "final_ext": "mp4",
@@ -306,20 +330,43 @@ def ydl_options(*, proxy: str | None, output_template: str | None = None) -> dic
     return options
 
 
+def is_transient_proxy_error(error: Exception) -> bool:
+    text = safe_error(error).lower()
+    if "sign in to confirm" in text or "not a bot" in text:
+        return False
+    markers = (
+        "proxy",
+        "timed out",
+        "timeout",
+        "connection reset",
+        "connection aborted",
+        "temporarily unavailable",
+        "http error 403",
+        "unable to download video data",
+    )
+    return any(marker in text for marker in markers)
+
+
 def with_proxy_failover(operation: str, callback: Any, request_id: str) -> Any:
     candidates = proxy_pool.candidates()
     if not candidates:
         raise RuntimeError("No YouTube proxy is configured and direct fallback is disabled")
 
     last_error: Exception | None = None
-    for attempt, proxy in enumerate(candidates, start=1):
+    attempt = 0
+    index = 0
+    sticky_retries = 0
+    while index < len(candidates):
+        proxy = candidates[index]
+        attempt += 1
         try:
             logger.info(
-                "%s request_id=%s attempt=%s route=%s",
+                "%s request_id=%s attempt=%s route=%s sticky=%s",
                 operation,
                 request_id,
                 attempt,
                 "proxy" if proxy else "direct",
+                sticky_retries,
             )
             return callback(proxy)
         except (DownloadError, OSError, subprocess.SubprocessError) as error:
@@ -331,9 +378,21 @@ def with_proxy_failover(operation: str, callback: Any, request_id: str) -> Any:
                 attempt,
                 safe_error(error),
             )
-            if attempt < len(candidates):
-                time.sleep(min(2 ** (attempt - 1), 8))
-    raise RuntimeError(f"YouTube {operation} failed after {len(candidates)} routes: {safe_error(last_error or Exception())}")
+            # Mid-download proxy drops: retry the same residential IP a couple of
+            # times with continuedl before rotating, so a 1GB+ file can finish.
+            if (
+                operation == "download"
+                and sticky_retries < 2
+                and is_transient_proxy_error(error)
+            ):
+                sticky_retries += 1
+                time.sleep(min(2 * sticky_retries, 6))
+                continue
+            sticky_retries = 0
+            index += 1
+            if index < len(candidates):
+                time.sleep(min(2 ** (index - 1), 8))
+    raise RuntimeError(f"YouTube {operation} failed after {attempt} routes: {safe_error(last_error or Exception())}")
 
 
 def extract_info(url: str, request_id: str) -> dict[str, Any]:
@@ -367,8 +426,9 @@ def locate_download(directory: Path) -> Path:
 
 def download_video(url: str, directory: Path, request_id: str) -> tuple[Path, dict[str, Any]]:
     def operation(proxy: str | None) -> tuple[Path, dict[str, Any]]:
-        for old_file in directory.glob("source.*"):
-            old_file.unlink(missing_ok=True)
+        # Re-copy from the read-only mount each attempt so a failed yt-dlp
+        # cookie rewrite cannot poison later retries.
+        refresh_cookies()
         with YoutubeDL(ydl_options(proxy=proxy, output_template=str(directory / "source.%(ext)s"))) as ydl:
             info = ydl.extract_info(url, download=False)
             if not isinstance(info, dict):
@@ -545,22 +605,22 @@ if allowed_origins:
 
 @app.on_event("startup")
 def validate_runtime() -> None:
-    global COOKIES_FILE
     if not SERVICE_TOKEN and not ALLOW_INSECURE:
         raise RuntimeError("YOUTUBE_SERVICE_TOKEN is required")
     if not AWS_BUCKET:
         raise RuntimeError("AWS_S3_BUCKET is required")
     if shutil.which("ffmpeg") is None or shutil.which("node") is None:
         raise RuntimeError("ffmpeg and Node.js are required")
-    COOKIES_FILE = prepare_writable_cookies(COOKIES_FILE)
+    refresh_cookies()
     TMP_ROOT.mkdir(parents=True, exist_ok=True)
     logger.info(
-        "service_ready proxies=%s direct_fallback=%s max_concurrency=%s pot_provider=%s cookies=%s",
+        "service_ready proxies=%s direct_fallback=%s max_concurrency=%s pot_provider=%s cookies=%s clients=%s",
         len(PROXIES),
         ALLOW_DIRECT_FALLBACK,
         MAX_CONCURRENT_DOWNLOADS,
         POT_PROVIDER_URL,
         bool(COOKIES_FILE),
+        ",".join(youtube_player_clients()),
     )
 
 
