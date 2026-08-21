@@ -24,7 +24,7 @@ services:
       AWS_S3_BUCKET: ${AWS_S3_BUCKET}
       YOUTUBE_SERVICE_TOKEN: ${YOUTUBE_SERVICE_TOKEN}
       YOUTUBE_PROXY_URLS: ${YOUTUBE_PROXY_URLS:-}
-      YOUTUBE_COOKIES_FILE: ${YOUTUBE_COOKIES_FILE:-}
+      YOUTUBE_COOKIES_FILE: ${YOUTUBE_COOKIES_FILE:-/cookies/youtube-cookies.txt}
       POT_PROVIDER_URL: http://pot-provider:4416
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-}
       ALLOWED_S3_PREFIX: sermons/
@@ -39,6 +39,7 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
     volumes:
       - youtube-download-tmp:/tmp/youtube-downloads
+      - ./youtube-cookies.txt:/cookies/youtube-cookies.txt:ro
     networks:
       - youtube-internal
     security_opt:
